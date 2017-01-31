@@ -16,7 +16,7 @@
 
 package com.globalmentor.calendar.calculator;
 
-import static com.globalmentor.calendar.calculator.ISODates.*;
+import static com.globalmentor.calendar.calculator.CalendarCalculator.*;
 import static com.globalmentor.java.Conditions.*;
 
 import java.io.*;

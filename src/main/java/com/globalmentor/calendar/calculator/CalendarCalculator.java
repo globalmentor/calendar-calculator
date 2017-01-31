@@ -29,7 +29,7 @@ import java.time.LocalDate;
  * Utilities for working with ISO dates.
  * @author Garret Wilson
  */
-public class ISODates {
+public class CalendarCalculator {
 
 	/**
 	 * Calculates the counts of calendar days before that intersect a set of ranges.
