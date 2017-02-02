@@ -8,7 +8,7 @@ Calendar Calculator is available in the Maven Central Repository as [com.globalm
 
 ## Issues
 
-Issues tracked by [JIRA](https://globalmentor.atlassian.net/projects/calendar-calculator).
+Issues tracked by [JIRA](https://globalmentor.atlassian.net/projects/JAVA).
 
 ## Changelog
 

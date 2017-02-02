@@ -35,7 +35,7 @@ import com.globalmentor.model.*;
  * @see CalendarCalculator
  * 
  */
-public class ISODatesTest {
+public class CalendarCalculatorTest {
 
 	/** @see CalendarCalculator#getDayCounts(Set) */
 	@SuppressWarnings("unchecked")
