@@ -1,4 +1,3 @@
-package com.globalmentor.calendar.calculator;
 /*
  * Copyright © 2013 GlobalMentor, Inc. <http://www.globalmentor.com/>
  *
@@ -15,7 +14,7 @@ package com.globalmentor.calendar.calculator;
  * limitations under the License.
  */
 
-
+package com.globalmentor.calendar.calculator;
 
 import static com.globalmentor.collections.Sets.*;
 import static org.hamcrest.Matchers.*;
