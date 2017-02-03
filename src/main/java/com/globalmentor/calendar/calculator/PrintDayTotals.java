@@ -20,8 +20,12 @@ import static com.globalmentor.calendar.calculator.CalendarCalculator.*;
 import static com.globalmentor.java.Conditions.*;
 
 import java.io.*;
-import java.time.LocalDate;
+import java.time.*;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+
+import org.kohsuke.args4j.*;
 
 import com.globalmentor.io.BOMInputStreamReader;
 import com.globalmentor.model.*;
@@ -29,10 +33,6 @@ import com.globalmentor.model.*;
 /**
  * A console application to print the totals of days overlapping some ranges. This is useful, for example, in calculating the number of days in a country for
  * compliance with visa restrictions.
- * 
- * <p>
- * <code>PrintDayTotals <var>date</var> <var>windowSize</var> [<var>maxDays</var> [<var>historyCount</var>]]</code>
- * </p>
  * 
  * <p>
  * Ranges are in the form <code><var>from</var>,<var>to</var></code>, e.g.:
@@ -65,67 +65,197 @@ import com.globalmentor.model.*;
  */
 public class PrintDayTotals {
 
+	/**
+	 * The main logic of the program.
+	 * 
+	 * @param args The arguments to be used on its execution.
+	 * @throws UnsupportedEncodingException if an input stream with an invalid BOM is read.
+	 * @throws IOException if an I/O error occurs.
+	 * 
+	 * @see CommandLineOptions
+	 */
 	public static void main(final String[] args) throws UnsupportedEncodingException, IOException {
-		checkArgument(args.length >= 2 && args.length <= 4,
-				"Must have at least a date and number of days with an optional window size and history count: PrintDayTotals date windowSize [maxDays [historyCount]].");
+
+		final CommandLineOptions commandLineOptions = new CommandLineOptions();
+		final CmdLineParser commandLineParser = new CmdLineParser(commandLineOptions);
+
+		try {
+			commandLineParser.parseArgument(args);
+		} catch(CmdLineException cmdLineException) {
+			System.err.println(String.format("One of the arguments of the program weren't type correctly: %s", cmdLineException.getMessage()));
+			commandLineParser.printUsage(System.out);
+			System.exit(1);
+		}
+
+		if(commandLineOptions.help()) { //if the command help was called, we print the usage and finish the execution of the program.
+			commandLineParser.printUsage(System.out);
+			System.exit(0);
+		}
+
 		//parse the parameters
-		final LocalDate date = LocalDate.parse(args[0]);
-		final int windowSize = Integer.parseInt(args[1]);
-		final long maxDays;
-		if(args.length >= 3) {
-			maxDays = Long.parseLong(args[2]);
-		} else {
-			maxDays = -1;
+		LocalDate date = null;
+
+		try {
+			date = commandLineOptions.getDate();
+		} catch(final DateTimeParseException dateTimeParseException) {
+			System.err
+					.println("The provided date was in an invalid format. Please, make sure that the given date is correctly in the ISO-8601 format. i.e.: YYYY-MM-DD.");
+			System.exit(1);
 		}
-		final int historyCount;
-		if(args.length >= 4) {
-			historyCount = Integer.parseInt(args[3]);
-		} else {
-			historyCount = windowSize;
-		}
-		//parse the ranges form System.in
+
+		assert date != null : "<date> should not be null at this point of the program";
+
+		final int windowSize = commandLineOptions.getWindowSize();
+		final int maxDays = commandLineOptions.getMaxDays().orElse(-1);
+		final int historyCount = commandLineOptions.getHistoryCount();
+
+		//parse the ranges from System.in
 		final Set<Range<LocalDate>> ranges = new HashSet<Range<LocalDate>>();
+
 		@SuppressWarnings("resource")
 		//we shouldn't close the input stream
 		final LineNumberReader reader = new LineNumberReader(new BOMInputStreamReader(System.in));
+
 		String line;
+
 		while((line = reader.readLine()) != null) {
 			final String[] lineComponents = line.split(",");
 			checkArgument(lineComponents.length == 2, "Expected two components on line %d: %s", reader.getLineNumber(), line);
 			ranges.add(new Range<LocalDate>(LocalDate.parse(lineComponents[0]), LocalDate.parse(lineComponents[1]))); //parse and store the range
 		}
+
 		//count the days
 		final Map<LocalDate, Count> dayCounts = getDayCounts(ranges);
+
 		//calculate the totals
 		final Map<LocalDate, Long> dayTotals = getDayTotals(date, windowSize, historyCount, dayCounts);
+
 		//print the results, calculating run totals on the fly
 		long runTotal = 0;
+
 		for(final Map.Entry<LocalDate, Long> dayTotal : dayTotals.entrySet()) {
 			final LocalDate day = dayTotal.getKey();
 			final Count count = dayCounts.get(day);
+
 			if(count != null && count.getCount() > 0) { //if we have a positive count
 				System.out.print('*'); //positive count indicator
 				runTotal += count.getCount(); //update our run count
 			} else { //if we don't have a positive count
 				runTotal = 0; //reset our run total
 			}
+
 			System.out.print(',');
+
 			final long windowTotal = dayTotal.getValue().longValue();
+
 			System.out.print(day + ","); //e.g. *,2011-02-03
+
 			if(count != null) {
 				System.out.print(count); //e.g. *,2011-02-03,1
 			}
+
 			System.out.print(',');
+
 			if(runTotal != 0) {
 				System.out.print(runTotal); //e.g. *,2011-02-03,1,5
 			}
+
 			System.out.print(',');
-			System.out.print(windowTotal); //e.g. ,2011-02-03,1,5,170
+
+			System.out.print(windowTotal); //e.g. *,2011-02-03,1,5,170
+
 			if(maxDays >= 0) { //if we know the maximum number of days, include the days remaining
 				System.out.print("," + (maxDays - windowTotal)); //e.g. *,2011-02-03,1,5,170,10
 			}
+
 			System.out.println();
 		}
+
+	}
+
+	/**
+	 * Command Line Option Handler to the {@link PrintDayTotals} program.
+	 * 
+	 * @author Magno Nascimento
+	 */
+	static class CommandLineOptions {
+
+		@Option(name = "--date", aliases = "-d", metaVar = "<date>", usage = "The date that the program will use for the calculations. If no date is provided, the current local date will be used.")
+		private String date;
+
+		@Option(name = "--window", aliases = "-w", metaVar = "<windowSize>", usage = "The number of days back to include in each total. If no window size is provided, the number of days between the given date and the same date a year before will be used.")
+		private Integer windowSize;
+
+		@Option(name = "--max", aliases = "-x", metaVar = "<maxDays>", usage = "The maximum number of days to be included. If no maximum number is provided, all the days will be included.")
+		private Integer maxDays;
+
+		@Option(name = "--history", aliases = "-h", metaVar = "<historyCount>", usage = "The number of day totals to include. If no history count is provided, the window size will be used.")
+		private Integer historyCount;
+
+		@Option(name = "--help", help = true, usage = "Presents the information of the command‐line options usage. If this option is enabled, all the other arguments will be ignored.")
+		private boolean help;
+
+		/**
+		 * Retrieves the date that the program must start.
+		 * 
+		 * @return The date that the program should start. It defaults to the current date if no date is provided.
+		 * @throws DateTimeParseException if the given date was in an invalid format.
+		 */
+		public LocalDate getDate() throws DateTimeParseException {
+
+			if(this.date != null) {
+				return LocalDate.parse(this.date); //if we cannot parse this date, an exception is thrown.
+			} else {
+				return LocalDate.now(); //if the date is null, we default it to the current date.
+			}
+
+		}
+
+		/**
+		 * @return The window size that the program must use. It defaults to the amount of days between the current date (inclusive) and the date of one year before
+		 *         (exclusive).
+		 */
+		public int getWindowSize() {
+
+			if(this.windowSize != null) {
+				return this.windowSize; //safe auto-unboxing, we already checked windowSize for null. 
+			} else {
+				return (int)ChronoUnit.DAYS.between(getDate().minusYears(1), getDate()); //if windowSize is null, we default it to exactly one year ago. We have to subtract one day from the initial time and add one to the ending time because the method Period.between() receives the initial time as inclusive and the ending time as exclusive.
+			}
+
+		}
+
+		/** @return The history count that must be used by the program. It defaults to the window size if no history count is provided. */
+		public int getHistoryCount() {
+
+			if(this.historyCount != null) {
+				return this.historyCount;
+			} else {
+				return getWindowSize(); //if historyCount is null, we default it to windowSize.
+			}
+
+		}
+
+		/**
+		 * @return The amount of days that must be printed to the user.
+		 * 
+		 * @throws IllegalArgumentException if the given max number is negative.
+		 */
+		public Optional<Integer> getMaxDays() {
+
+			if(maxDays != null) {
+				return Optional.of(checkArgumentNotNegative(this.maxDays));
+			} else {
+				return Optional.empty();
+			}
+
+		}
+
+		/** @return {@code true} if the command help was called. */
+		public boolean help() {
+			return this.help;
+		}
+
 	}
 
 }

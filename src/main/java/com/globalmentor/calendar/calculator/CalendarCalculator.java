@@ -26,7 +26,7 @@ import static com.globalmentor.model.Count.*;
 import java.time.LocalDate;
 
 /**
- * Utilities for working with ISO dates.
+ * Utilities for working with local dates.
  * @author Garret Wilson
  */
 public class CalendarCalculator {
@@ -39,15 +39,19 @@ public class CalendarCalculator {
 	 */
 	public static SortedMap<LocalDate, Count> getDayCounts(final Set<Range<LocalDate>> ranges) {
 		final SortedMap<LocalDate, Count> dayCounts = new TreeMap<LocalDate, Count>();
+
 		for(final Range<LocalDate> range : ranges) { //fill the day counts from the ranges
 			final LocalDate upperBoundDate = range.getUpperBound();
 			LocalDate rangeDate = range.getLowerBound(); //start at the bottom of the range
+
 			checkArgument(rangeDate.compareTo(upperBoundDate) <= 0, "Calendar range %s cannot be greater than %s.", rangeDate, upperBoundDate);
+
 			while(rangeDate.compareTo(upperBoundDate) <= 0) { //sweep the range until we go past the upper end of the range
 				incrementCounterMapCount(dayCounts, rangeDate);
 				rangeDate = rangeDate.plusDays(1); //go to the next day in the range
 			}
 		}
+
 		return dayCounts;
 	}
 
@@ -81,20 +85,27 @@ public class CalendarCalculator {
 	public static SortedMap<LocalDate, Long> getDayTotals(final LocalDate date, final int windowSize, final int historyCount,
 			final Map<LocalDate, Count> dayCounts) {
 		LocalDate day = date;
+
 		final SortedMap<LocalDate, Long> dayTotals = new TreeMap<LocalDate, Long>();
+
 		for(int i = 0; i < historyCount; ++i) { //calculate all the day totals in the past
 			LocalDate totalDate = day; //use a separate local date to calculate the totals for this day
 			long total = 0; //calculate the total for this date
+
 			for(int j = 0; j < windowSize; ++j) { //look at previous days relative to the current calendar date
 				final Count currentDayCount = dayCounts.get(totalDate); //get the count for this day
+
 				if(currentDayCount != null) {
 					total += currentDayCount.getCount();
 				}
+
 				totalDate = totalDate.minusDays(1); //go back a day and continue calculating the total
 			}
+
 			dayTotals.put(day, Long.valueOf(total)); //store the total for this day
 			day = day.minusDays(1); //go back a day and calculate that day's total
 		}
+
 		return dayTotals;
 	}
 
