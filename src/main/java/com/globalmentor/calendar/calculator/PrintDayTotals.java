@@ -106,7 +106,6 @@ public class PrintDayTotals {
 		assert date != null : "<date> should not be null at this point of the program";
 
 		final int windowSize = commandLineOptions.getWindowSize();
-		final int maxDays = commandLineOptions.getMaxDays().orElse(-1);
 		final int historyCount = commandLineOptions.getHistoryCount();
 
 		//parse the ranges from System.in
@@ -164,9 +163,7 @@ public class PrintDayTotals {
 
 			System.out.print(windowTotal); //e.g. *,2011-02-03,1,5,170
 
-			if(maxDays >= 0) { //if we know the maximum number of days, include the days remaining
-				System.out.print("," + (maxDays - windowTotal)); //e.g. *,2011-02-03,1,5,170,10
-			}
+			commandLineOptions.getMaxDays().ifPresent(maxDays -> System.out.print("," + (maxDays - windowTotal)));//if we know the maximum number of days, include the days remaining. e.g. *,2011-02-03,1,5,170,10
 
 			System.out.println();
 		}
@@ -192,7 +189,7 @@ public class PrintDayTotals {
 		@Option(name = "--history", aliases = "-h", metaVar = "<historyCount>", usage = "The number of day totals to include. If no history count is provided, the window size will be used.")
 		private Integer historyCount;
 
-		@Option(name = "--help", help = true, usage = "Presents the information of the command‐line options usage. If this option is enabled, all the other arguments will be ignored.")
+		@Option(name = "--help", help = true, usage = "Presents the information of the command-line options usage. If this option is enabled, all the other arguments will be ignored.")
 		private boolean help;
 
 		/**
@@ -217,10 +214,14 @@ public class PrintDayTotals {
 		 */
 		public int getWindowSize() {
 
+			final LocalDate date = getDate();
+
 			if(this.windowSize != null) {
 				return this.windowSize; //safe auto-unboxing, we already checked windowSize for null. 
 			} else {
-				return (int)ChronoUnit.DAYS.between(getDate().minusYears(1), getDate()); //if windowSize is null, we default it to exactly one year ago. We have to subtract one day from the initial time and add one to the ending time because the method Period.between() receives the initial time as inclusive and the ending time as exclusive.
+				//if windowSize is null, we default it to exactly one year ago. 
+				// We have to subtract one day from the initial time and add one to the ending time because the method Period.between() receives the initial time as inclusive and the ending time as exclusive.
+				return (int)ChronoUnit.DAYS.between(date.minusYears(1), date);
 			}
 
 		}
