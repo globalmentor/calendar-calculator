@@ -12,4 +12,6 @@ Issues tracked by [JIRA](https://globalmentor.atlassian.net/projects/JAVA).
 
 ## Changelog
 
-- 1.0.0: * [JAVA-20](https://globalmentor.atlassian.net/browse/JAVA-20): Extracted this project from `com.globalmentor:globalmentor-core`.
+- 1.0.0: 
+	* [JAVA-20](https://globalmentor.atlassian.net/browse/JAVA-20): Extracted this project from `com.globalmentor:globalmentor-core`.
+	* [JAVA-21](https://globalmentor.atlassian.net/browse/JAVA-21): Added args4j to handle with `PrintDayTotals` arguments.
