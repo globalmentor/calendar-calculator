@@ -63,6 +63,9 @@ public class PrintDayTotalsTest {
 		parsedCommandLineOptions = parseArguments("--help", "--date", "2017-01-30");
 		assertThat(parsedCommandLineOptions.help(), is(true));
 
+		parsedCommandLineOptions = parseArguments("--help", "--from", "2016-02-16");
+		assertThat(parsedCommandLineOptions.help(), is(true));
+
 		parsedCommandLineOptions = parseArguments("--help", "--window", "10");
 		assertThat(parsedCommandLineOptions.help(), is(true));
 
@@ -76,6 +79,9 @@ public class PrintDayTotalsTest {
 		assertThat(parsedCommandLineOptions.help(), is(true));
 
 		parsedCommandLineOptions = parseArguments("--date", "2017-01-30");
+		assertThat(parsedCommandLineOptions.help(), is(false));
+
+		parsedCommandLineOptions = parseArguments("--from", "2016-02-16");
 		assertThat(parsedCommandLineOptions.help(), is(false));
 
 		parsedCommandLineOptions = parseArguments("--window", "10");
@@ -134,6 +140,57 @@ public class PrintDayTotalsTest {
 	@Test(expected = CmdLineException.class)
 	public void testCommandLineOptionDateWithNoMetaVar() throws CmdLineException {
 		this.parseArguments("--date");
+	}
+
+	/**
+	 * Tests if the option {@code history} is working when provided with its metaVar to the parser.
+	 * 
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	@Test
+	public void testCommandLineOptionFromDate() throws CmdLineException {
+		CommandLineOptions parsedCommandLineOptions;
+
+		parsedCommandLineOptions = parseArguments("--from", "2017-01-31", "--date", "2017-01-31");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(0));
+
+		parsedCommandLineOptions = parseArguments("--from", "2015-01-31", "--date", "2016-01-31");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(365)); //tests if the window size is correctly when providing a Period of a non-leap year.
+
+		parsedCommandLineOptions = parseArguments("--from", "2016-01-31", "--date", "2017-01-31");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(366)); //tests if the window size is correctly when providing a Period of a leap year.
+	}
+
+	/**
+	 * Tests if the option {@code history} is working when provided as an alias with its metaVar to the parser.
+	 * 
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	@Test
+	public void testCommandLineOptionFromDateWithAlias() throws CmdLineException {
+		CommandLineOptions parsedCommandLineOptions = parseArguments("-f", "2017-01-31", "--date", "2017-01-31");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(0));
+	}
+
+	/**
+	 * Tests if the option {@code history} is throwing an exception when it's provided with no metaVar.
+	 * 
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	@Test(expected = CmdLineException.class)
+	public void testCommandLineOptionFromDateWithNoMetaVar() throws CmdLineException {
+		this.parseArguments("--from");
+	}
+
+	/**
+	 * Tests if the option {@code from} is throwing an exception when its metaVar is in an invalid date format.
+	 * 
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	@Test(expected = DateTimeParseException.class)
+	public void testCommandLineOptionFromDateWithWrongFormat() throws CmdLineException {
+		CommandLineOptions parsedCommandLineOptions = parseArguments("--from", "30-01-2017");
+		parsedCommandLineOptions.getWindowSize();
 	}
 
 	/**

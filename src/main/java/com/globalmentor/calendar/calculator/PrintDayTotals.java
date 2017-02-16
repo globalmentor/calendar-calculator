@@ -180,7 +180,12 @@ public class PrintDayTotals {
 		@Option(name = "--date", aliases = "-d", metaVar = "<date>", usage = "The date that the program will use for the calculations. If no date is provided, the current local date will be used.")
 		private String date;
 
-		@Option(name = "--window", aliases = "-w", metaVar = "<windowSize>", usage = "The number of days back to include in each total. If no window size is provided, the number of days between the given date and the same date a year before will be used.")
+		@Option(name = "--from", aliases = "-f", metaVar = "<fromDate>", forbids = {
+				"--window"}, usage = "The initial date to be used for the calculations. This will set up the window size automatically.")
+		private String fromDate;
+
+		@Option(name = "--window", aliases = "-w", metaVar = "<windowSize>", forbids = {
+				"--from"}, usage = "The number of days back to include in each total. If no window size is provided, the number of days between the given date and the same date a year before will be used.")
 		private Integer windowSize;
 
 		@Option(name = "--max", aliases = "-x", metaVar = "<maxDays>", usage = "The maximum number of days to be included. If no maximum number is provided, all the days will be included.")
@@ -209,21 +214,32 @@ public class PrintDayTotals {
 		}
 
 		/**
-		 * @return The window size that the program must use. It defaults to the amount of days between the current date (inclusive) and the date of one year before
-		 *         (exclusive).
+		 * @return The window size that the program must use. If an initial date is provided, window size will be the amount of days between the initial date and
+		 *         the date provided for calculations. If both window size and initial date are not provided it defaults to the amount of days between the current
+		 *         date (inclusive) and the date of one year before (exclusive).
 		 */
 		public int getWindowSize() {
-
-			final LocalDate date = getDate();
+			int windowSize;
 
 			if(this.windowSize != null) {
-				return this.windowSize; //safe auto-unboxing, we already checked windowSize for null. 
+				windowSize = this.windowSize; //safe auto-unboxing, we already checked windowSize for null. 
 			} else {
-				//if windowSize is null, we default it to exactly one year ago. 
-				// We have to subtract one day from the initial time and add one to the ending time because the method Period.between() receives the initial time as inclusive and the ending time as exclusive.
-				return (int)ChronoUnit.DAYS.between(date.minusYears(1), date);
+
+				LocalDate initialDate = null;
+				LocalDate finalDate = getDate();
+
+				if(this.fromDate != null) {
+					initialDate = LocalDate.parse(this.fromDate); //if windowSize is null and fromDate not, the windowSize will be the amount of days between the initial date (exclusive) and the provided date (inclusive).
+				} else {
+					initialDate = finalDate.minusYears(1); //if windowSize and fromDate is null, we default it to the amount of days between the provided date and exactly one year before.
+				}
+
+				assert initialDate != null : "<initialDate> should not be null at this point of the program";
+
+				windowSize = (int)ChronoUnit.DAYS.between(initialDate, finalDate);
 			}
 
+			return windowSize;
 		}
 
 		/** @return The history count that must be used by the program. It defaults to the window size if no history count is provided. */
