@@ -29,7 +29,6 @@ import org.kohsuke.args4j.*;
 
 import com.globalmentor.io.BOMInputStreamReader;
 import com.globalmentor.model.*;
-import com.globalmentor.util.StringTemplate;
 
 /**
  * A console application to print the totals of days overlapping some ranges. This is useful, for example, in calculating the number of days in a country for
@@ -178,14 +177,11 @@ public class PrintDayTotals {
 	 */
 	static class CommandLineOptions {
 
-		static final StringTemplate ISO_LOCAL_DATE_WITHOUT_YEAR_TEMPLATE = new StringTemplate(StringTemplate.STRING_PARAMETER, "-",
-				StringTemplate.STRING_PARAMETER);
-
-		@Option(name = "--date", aliases = "-d", metaVar = "<date>", usage = "The date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is provided, it will default to the current year.")
+		@Option(name = "--date", aliases = "-d", metaVar = "<date>", usage = "The date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is provided (i.e., if a date on the format --MM-dd is provided), it will default to the current year.")
 		private String date;
 
 		@Option(name = "--from", aliases = "-f", metaVar = "<fromDate>", forbids = {
-				"--window"}, usage = "The initial date to be used for the calculations. This will set up the window size automatically. If no year is provided, it will default to the current year.")
+				"--window"}, usage = "The initial date to be used for the calculations. This will set up the window size automatically. If no year is provided (i.e., if a date on the format --MM-dd is provided), it will default to the current year.")
 		private String fromDate;
 
 		@Option(name = "--window", aliases = "-w", metaVar = "<windowSize>", forbids = {
@@ -210,11 +206,13 @@ public class PrintDayTotals {
 		public LocalDate getDate() throws DateTimeParseException {
 
 			if(this.date != null) {
+
 				try {
-				return LocalDate.parse(this.date); //if we cannot parse this date, an exception is thrown.
+					return LocalDate.parse(this.date); //if we cannot parse this date, an exception is thrown.
 				} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
-					return LocalDate.parse(ISO_LOCAL_DATE_WITHOUT_YEAR_TEMPLATE.apply(LocalDate.now().getYear(), this.date));
+					return MonthDay.parse(this.date).atYear(Year.now().getValue());
 				}
+
 			} else {
 				return LocalDate.now(); //if the date is null, we default it to the current date.
 			}
@@ -225,13 +223,16 @@ public class PrintDayTotals {
 		 * @return The window size that the program must use. If an initial date is provided, window size will be the amount of days between the initial date and
 		 *         the date provided for calculations. If both window size and initial date are not provided it defaults to the amount of days between the current
 		 *         date (inclusive) and the date of one year before (exclusive).
+		 * @throws IllegalArgumentException if the given window size is a negative value.
 		 * @throws DateTimeParseException if the given date was in an invalid format.
 		 */
 		public int getWindowSize() {
 			int windowSize;
 
-			if(this.windowSize != null) {
-				windowSize = this.windowSize; //safe auto-unboxing, we already checked windowSize for null. 
+			if(this.windowSize != null) { //safe auto-unboxing after checking windowSize for null. 
+				checkArgument(this.windowSize >= 0, "<windowSize> cannot be after less than 0");
+
+				windowSize = this.windowSize;
 			} else {
 
 				LocalDate initialDate = null;
@@ -242,7 +243,7 @@ public class PrintDayTotals {
 					try {
 						initialDate = LocalDate.parse(this.fromDate); //if windowSize is null and fromDate not, the windowSize will be the amount of days between the initial date (exclusive) and the provided date (inclusive).
 					} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
-						initialDate = LocalDate.parse(ISO_LOCAL_DATE_WITHOUT_YEAR_TEMPLATE.apply(finalDate.getYear(), this.fromDate)); //if initialDate could not be parsed with ISO_LOCAL_DATE, we try to parse it using ISO_LOCAL_DATE_WITHOUT_YEAR
+						initialDate = MonthDay.parse(this.fromDate).atYear(finalDate.getYear()); //if initialDate could not be parsed with ISO_LOCAL_DATE, we try to parse it using MonthDay at the year of the finalDate.
 					}
 
 				} else {
