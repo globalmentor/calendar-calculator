@@ -177,11 +177,11 @@ public class PrintDayTotals {
 	 */
 	static class CommandLineOptions {
 
-		@Option(name = "--date", aliases = "-d", metaVar = "<date>", usage = "The date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is provided (i.e., if a date on the format --MM-dd is provided), it will default to the current year.")
+		@Option(name = "--date", aliases = "-d", metaVar = "<date>", usage = "The date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the current year.")
 		private String date;
 
 		@Option(name = "--from", aliases = "-f", metaVar = "<fromDate>", forbids = {
-				"--window"}, usage = "The initial date to be used for the calculations. This will set up the window size automatically. If no year is provided (i.e., if a date on the format --MM-dd is provided), it will default to the current year.")
+				"--window"}, usage = "The initial date to be used for the calculations. This will set up the window size automatically. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the current year.")
 		private String fromDate;
 
 		@Option(name = "--window", aliases = "-w", metaVar = "<windowSize>", forbids = {
@@ -210,7 +210,7 @@ public class PrintDayTotals {
 				try {
 					return LocalDate.parse(this.date); //if we cannot parse this date, an exception is thrown.
 				} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
-					return MonthDay.parse(this.date).atYear(Year.now().getValue());
+					return LocalDate.parse(String.format("%d-%s", Year.now().getValue(), this.date));
 				}
 
 			} else {
@@ -243,7 +243,7 @@ public class PrintDayTotals {
 					try {
 						initialDate = LocalDate.parse(this.fromDate); //if windowSize is null and fromDate not, the windowSize will be the amount of days between the initial date (exclusive) and the provided date (inclusive).
 					} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
-						initialDate = MonthDay.parse(this.fromDate).atYear(finalDate.getYear()); //if initialDate could not be parsed with ISO_LOCAL_DATE, we try to parse it using MonthDay at the year of the finalDate.
+						initialDate = LocalDate.parse(String.format("%s-%s", finalDate.getYear(), this.fromDate)); //if initialDate could not be parsed with ISO_LOCAL_DATE, we try to parse it using MonthDay at the year of the finalDate.
 					}
 
 				} else {
