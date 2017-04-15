@@ -17,15 +17,13 @@
 package com.globalmentor.calendar.calculator;
 
 import org.junit.*;
-import org.kohsuke.args4j.CmdLineException;
-import org.kohsuke.args4j.CmdLineParser;
+import org.kohsuke.args4j.*;
 
 import com.globalmentor.calendar.calculator.PrintDayTotals.CommandLineOptions;
 
 import static org.junit.Assert.*;
 
-import java.time.LocalDate;
-import java.time.Year;
+import java.time.*;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -195,9 +193,9 @@ public class PrintDayTotalsTest {
 		parsedCommandLineOptions = parseArguments("--from", "2016-01-31", "--date", "2017-01-31");
 		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(366));
 	}
-
+	
 	/**
-	 * Tests if the option {@code history} is throwing an exception if the initial date provided comes after the final date.
+	 * Tests if the option {@code window} is throwing an exception if the initial date provided comes after the final date.
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
@@ -205,29 +203,22 @@ public class PrintDayTotalsTest {
 	public void testCommandLineOptionFromDateInFuture() throws CmdLineException {
 		parseArguments("--from", LocalDate.now().plusDays(1).toString()).getWindowSize();
 	}
-
+	
 	/**
-	 * Tests if the option {@code history} is throwing an exception if the initial date provided comes after the final date.
+	 * Tests if the option {@code window} is working if the initial date without year provided comes after the final date.
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
-	@Test(expected = IllegalArgumentException.class)
-	public void testCommandLineOptionFromDateInFutureUsingMonthDay() throws CmdLineException {
-		parseArguments("--from", LocalDate.now().plusDays(1).toString().substring(5)).getWindowSize();
-	}
-
-	/**
-	 * Tests if the option {@code history} is throwing an exception if the initial date provided comes after the final date.
-	 * 
-	 * @throws CmdLineException if an error occurs while parsing the arguments.
-	 */
-	@Test(expected = IllegalArgumentException.class)
-	public void testCommandLineOptionFromDateInFutureUsingMonthDayManuallyCreated() throws CmdLineException {
-		parseArguments("--date", "04-01", "--from", "04-02").getWindowSize();
+	@Test
+	public void testCommandLineOptionFromDateInFutureWithoutYear() throws CmdLineException {
+		final LocalDate currentLocalDate = LocalDate.now();
+		
+		final CommandLineOptions parsedCommandLineOptions = parseArguments("--from", currentLocalDate.plusDays(1).toString().substring(5));
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(currentLocalDate.plusDays(1).minusYears(1), currentLocalDate)));
 	}
 	
 	/**
-	 * Tests if the option {@code history} is working when provided as an alias with its metaVar to the parser.
+	 * Tests if the option {@code window} is working when provided as an alias with its metaVar to the parser.
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
@@ -238,7 +229,7 @@ public class PrintDayTotalsTest {
 	}
 
 	/**
-	 * Tests if the option {@code history} is throwing an exception when it's provided with no metaVar.
+	 * Tests if the command line handler is throwing an exception when it's provided with no metaVar.
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */

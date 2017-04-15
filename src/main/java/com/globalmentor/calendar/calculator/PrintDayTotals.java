@@ -181,7 +181,7 @@ public class PrintDayTotals {
 		private String date;
 
 		@Option(name = "--from", aliases = "-f", metaVar = "<fromDate>", forbids = {
-				"--window"}, usage = "The initial date to be used for the calculations. This will set up the window size automatically. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the current year.")
+				"--window"}, usage = "The initial date to be used for the calculations. This will set up the window size automatically. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the last occurrence of the provided date.")
 		private String fromDate;
 
 		@Option(name = "--window", aliases = "-w", metaVar = "<windowSize>", forbids = {
@@ -243,7 +243,14 @@ public class PrintDayTotals {
 					try {
 						initialDate = LocalDate.parse(this.fromDate); //if windowSize is null and fromDate not, the windowSize will be the amount of days between the initial date (exclusive) and the provided date (inclusive).
 					} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
-						initialDate = LocalDate.parse(String.format("%s-%s", finalDate.getYear(), this.fromDate)); //if initialDate could not be parsed with ISO_LOCAL_DATE, we try to parse it using MonthDay at the year of the finalDate.
+						int fromDateYear = finalDate.getYear();
+
+						final MonthDay fromDateWithoutYear = MonthDay.parse(String.format("--%s", this.fromDate));
+						if(fromDateWithoutYear.isAfter(MonthDay.now())) { //if the provided initial date is after the current date, then we use its last occurrence i.e., the same date on the last year.
+							fromDateYear = fromDateYear - 1;
+						}
+						
+						initialDate = fromDateWithoutYear.atYear(fromDateYear); //if initialDate could not be parsed with ISO_LOCAL_DATE, we try to parse it using MonthDay at the year of the last occurrence of the provided date.
 					}
 
 				} else {
@@ -266,7 +273,7 @@ public class PrintDayTotals {
 			if(this.historyCount != null) {
 				return this.historyCount;
 			} else {
-				return getWindowSize(); //if historyCount is null, we default it to windowSize.
+				return getWindowSize();
 			}
 
 		}
