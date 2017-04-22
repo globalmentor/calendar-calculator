@@ -24,6 +24,7 @@ import static com.globalmentor.java.Conditions.*;
 import static com.globalmentor.model.Count.*;
 
 import java.time.LocalDate;
+import java.time.MonthDay;
 
 /**
  * Utilities for working with local dates.
@@ -67,7 +68,24 @@ public class CalendarCalculator {
 	 * @return A map of all calendar days and the total number of intersection with the ranges within that period.
 	 */
 	public static SortedMap<LocalDate, Long> getDayTotals(final LocalDate date, final int windowSize, final Map<LocalDate, Count> dayCounts) {
-		return getDayTotals(date, windowSize, windowSize, dayCounts);
+		return getDayTotals(date, null, windowSize, windowSize, dayCounts);
+	}
+
+	/**
+	 * Calculates the totals for a particular date and a number of calendar days before that date.
+	 * <p>
+	 * For example, passing a calendar date of 2000-01-01 with a day count of 365, will return, for each day in the previous year, the number of days that
+	 * intersect one of the ranges.
+	 * </p>
+	 * @param date The current date to use for calculations.
+	 * @param resetDate The date used for reset calculations.
+	 * @param windowSize The number of days back to include in each total.
+	 * @param dayCounts A map of totals for individual dates.
+	 * @return A map of all calendar days and the total number of intersection with the ranges within that period.
+	 */
+	public static SortedMap<LocalDate, Long> getDayTotals(final LocalDate date, final LocalDate resetDate, final int windowSize,
+			final Map<LocalDate, Count> dayCounts) {
+		return getDayTotals(date, resetDate, windowSize, windowSize, dayCounts);
 	}
 
 	/**
@@ -77,12 +95,13 @@ public class CalendarCalculator {
 	 * the number of days that intersect one of the ranges within the window of 365 days before each date.
 	 * </p>
 	 * @param date The current date to use for calculations.
+	 * @param resetDate The date used for reset calculations.
 	 * @param windowSize The number of days back to include in each total.
 	 * @param historyCount The number of day totals to include.
 	 * @param dayCounts A map of totals for individual dates.
 	 * @return A map of all calendar days and the total number of intersection with the ranges within the indicated history period.
 	 */
-	public static SortedMap<LocalDate, Long> getDayTotals(final LocalDate date, final int windowSize, final int historyCount,
+	public static SortedMap<LocalDate, Long> getDayTotals(final LocalDate date, final LocalDate resetDate, final int windowSize, final int historyCount,
 			final Map<LocalDate, Count> dayCounts) {
 		LocalDate day = date;
 
@@ -93,10 +112,15 @@ public class CalendarCalculator {
 			long total = 0; //calculate the total for this date
 
 			for(int j = 0; j < windowSize; ++j) { //look at previous days relative to the current calendar date
+
 				final Count currentDayCount = dayCounts.get(totalDate); //get the count for this day
 
 				if(currentDayCount != null) {
 					total += currentDayCount.getCount();
+				}
+
+				if(resetDate != null && MonthDay.from(totalDate).equals(MonthDay.from(resetDate))) {
+					break; //if totalDate is equals to the reset date, then we will stop the count
 				}
 
 				totalDate = totalDate.minusDays(1); //go back a day and continue calculating the total

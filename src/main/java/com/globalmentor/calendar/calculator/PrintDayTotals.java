@@ -94,9 +94,11 @@ public class PrintDayTotals {
 
 		//parse the parameters
 		LocalDate date = null;
+		LocalDate resetDate = null;
 
 		try {
 			date = commandLineOptions.getDate();
+			resetDate = commandLineOptions.getInitialDate().orElse(null);
 		} catch(final DateTimeParseException dateTimeParseException) {
 			System.err
 					.println("The provided date was in an invalid format. Please, make sure that the given date is correctly in the ISO-8601 format. i.e.: YYYY-MM-DD.");
@@ -127,7 +129,7 @@ public class PrintDayTotals {
 		final Map<LocalDate, Count> dayCounts = getDayCounts(ranges);
 
 		//calculate the totals
-		final Map<LocalDate, Long> dayTotals = getDayTotals(date, windowSize, historyCount, dayCounts);
+		final Map<LocalDate, Long> dayTotals = getDayTotals(date, resetDate, windowSize, historyCount, dayCounts);
 
 		//print the results, calculating run totals on the fly
 		long runTotal = 0;
@@ -220,6 +222,39 @@ public class PrintDayTotals {
 		}
 
 		/**
+		 * Retrieves the initial date that the program must use as reset date.
+		 * 
+		 * @return The initial date that the program should use as reset date.
+		 * @throws DateTimeParseException if the given date was in an invalid format.
+		 */
+		public Optional<LocalDate> getInitialDate() throws DateTimeParseException {
+
+			LocalDate initialDate = null;
+
+			if(this.fromDate != null) {
+
+				try {
+					initialDate = LocalDate.parse(this.fromDate); //if windowSize is null and fromDate not, the windowSize will be the amount of days between the initial date (exclusive) and the provided date (inclusive).
+				} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
+					int year = getDate().getYear();
+
+					final MonthDay fromDateWithoutYear = MonthDay.parse(String.format("--%s", this.fromDate));
+
+					if(fromDateWithoutYear.isAfter(MonthDay.now())) { //if the provided initial date is after the current date, then we use its last occurrence i.e., the same date on the last year.
+						year--;
+					}
+
+					initialDate = fromDateWithoutYear.atYear(year); //if initialDate could not be parsed with ISO_LOCAL_DATE, we try to parse it using MonthDay at the year of the last occurrence of the provided date.
+				}
+
+				return Optional.of(initialDate);
+			} else {
+				return Optional.empty();
+			}
+
+		}
+
+		/**
 		 * @return The window size that the program must use. If an initial date is provided, window size will be the amount of days between the initial date and
 		 *         the date provided for calculations. If both window size and initial date are not provided it defaults to the amount of days between the current
 		 *         date (inclusive) and the date of one year before (exclusive).
@@ -235,29 +270,8 @@ public class PrintDayTotals {
 				windowSize = this.windowSize;
 			} else {
 
-				LocalDate initialDate = null;
 				final LocalDate finalDate = getDate();
-
-				if(this.fromDate != null) {
-
-					try {
-						initialDate = LocalDate.parse(this.fromDate); //if windowSize is null and fromDate not, the windowSize will be the amount of days between the initial date (exclusive) and the provided date (inclusive).
-					} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
-						int fromDateYear = finalDate.getYear();
-
-						final MonthDay fromDateWithoutYear = MonthDay.parse(String.format("--%s", this.fromDate));
-						if(fromDateWithoutYear.isAfter(MonthDay.now())) { //if the provided initial date is after the current date, then we use its last occurrence i.e., the same date on the last year.
-							fromDateYear = fromDateYear - 1;
-						}
-						
-						initialDate = fromDateWithoutYear.atYear(fromDateYear); //if initialDate could not be parsed with ISO_LOCAL_DATE, we try to parse it using MonthDay at the year of the last occurrence of the provided date.
-					}
-
-				} else {
-					initialDate = finalDate.minusYears(1); //if windowSize and fromDate is null, we default it to the amount of days between the provided date and exactly one year before.
-				}
-
-				assert initialDate != null : "<initialDate> should not be null at this point of the program";
+				final LocalDate initialDate = getInitialDate().orElse(finalDate.minusYears(1)); //if windowSize and fromDate is null, we default it to the amount of days between the provided date and exactly one year before.
 
 				checkArgument(finalDate.compareTo(initialDate) >= 0, "<fromDate> cannot be after <date>");
 
