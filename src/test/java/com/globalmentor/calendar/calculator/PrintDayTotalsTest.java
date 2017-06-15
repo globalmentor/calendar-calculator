@@ -17,14 +17,13 @@
 package com.globalmentor.calendar.calculator;
 
 import org.junit.*;
-import org.kohsuke.args4j.CmdLineException;
-import org.kohsuke.args4j.CmdLineParser;
+import org.kohsuke.args4j.*;
 
 import com.globalmentor.calendar.calculator.PrintDayTotals.CommandLineOptions;
 
 import static org.junit.Assert.*;
 
-import java.time.LocalDate;
+import java.time.*;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -63,6 +62,9 @@ public class PrintDayTotalsTest {
 		parsedCommandLineOptions = parseArguments("--help", "--date", "2017-01-30");
 		assertThat(parsedCommandLineOptions.help(), is(true));
 
+		parsedCommandLineOptions = parseArguments("--help", "--from", "2016-02-16");
+		assertThat(parsedCommandLineOptions.help(), is(true));
+
 		parsedCommandLineOptions = parseArguments("--help", "--window", "10");
 		assertThat(parsedCommandLineOptions.help(), is(true));
 
@@ -76,6 +78,9 @@ public class PrintDayTotalsTest {
 		assertThat(parsedCommandLineOptions.help(), is(true));
 
 		parsedCommandLineOptions = parseArguments("--date", "2017-01-30");
+		assertThat(parsedCommandLineOptions.help(), is(false));
+
+		parsedCommandLineOptions = parseArguments("--from", "2016-02-16");
 		assertThat(parsedCommandLineOptions.help(), is(false));
 
 		parsedCommandLineOptions = parseArguments("--window", "10");
@@ -98,10 +103,15 @@ public class PrintDayTotalsTest {
 	 */
 	@Test
 	public void testCommandLineOptionDate() throws CmdLineException {
-		CommandLineOptions parsedCommandLineOptions = parseArguments("--date", "2017-01-30");
+		CommandLineOptions parsedCommandLineOptions;
+
+		assertThat(parseArguments().getDate(), equalTo(LocalDate.now()));
+
+		parsedCommandLineOptions = parseArguments("--date", "2017-01-30");
 		assertThat(parsedCommandLineOptions.getDate(), equalTo(LocalDate.of(2017, 1, 30)));
 
-		assertThat(new CommandLineOptions().getDate(), equalTo(LocalDate.now()));
+		parsedCommandLineOptions = parseArguments("--date", "03-06");
+		assertThat(parsedCommandLineOptions.getDate(), equalTo(LocalDate.parse(String.format("%d-03-06", Year.now().getValue()))));
 	}
 
 	/**
@@ -137,6 +147,109 @@ public class PrintDayTotalsTest {
 	}
 
 	/**
+	 * Tests if the option {@code history} is working when provided with its metaVar to the parser.
+	 * 
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	@Test
+	public void testCommandLineOptionFromDate() throws CmdLineException {
+		CommandLineOptions parsedCommandLineOptions;
+
+		//tests if <fromDate> is starting exactly one year before LocalDate.now()
+		parsedCommandLineOptions = parseArguments();
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(LocalDate.now().minusYears(1), LocalDate.now())));
+
+		//tests if <fromDate> is starting exactly one year before a given <date>
+		parsedCommandLineOptions = parseArguments("--date", "2017-03-06");
+		assertThat(parsedCommandLineOptions.getWindowSize(),
+				equalTo((int)ChronoUnit.DAYS.between(LocalDate.parse("2017-03-06").minusYears(1), LocalDate.parse("2017-03-06"))));
+
+		//tests if the period between <fromDate> and LocalDate.now() is being correctly calculated
+		parsedCommandLineOptions = parseArguments("--from", "2017-03-06");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(LocalDate.parse("2017-03-06"), LocalDate.now())));
+
+		//tests if the period between <fromDate> and LocalDate.now() is being correctly calculated without explicit use of a year
+		parsedCommandLineOptions = parseArguments("--from", "03-06");
+		assertThat(parsedCommandLineOptions.getWindowSize(),
+				equalTo((int)ChronoUnit.DAYS.between(LocalDate.parse(String.format("%d-03-06", Year.now().getValue())), LocalDate.now())));
+
+		//tests if the period between <fromDate> and <date> is being correctly calculated without explicit use of an year
+		parsedCommandLineOptions = parseArguments("--from", "03-06", "--date", "2017-03-06");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(0));
+
+		//tests if the year of the given <fromDate> is the same as the one of <date>
+		parsedCommandLineOptions = parseArguments("--from", "01-01", "--date", "2000-01-01");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(0));
+
+		//tests if the window size is correct when providing the same <fromDate> as <date>.
+		parsedCommandLineOptions = parseArguments("--from", "2017-01-31", "--date", "2017-01-31");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(0));
+
+		//tests if the window size is correct when providing a Period of a non-leap year.
+		parsedCommandLineOptions = parseArguments("--from", "2015-01-31", "--date", "2016-01-31");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(365));
+
+		//tests if the window size is correct when providing a Period of a leap year.
+		parsedCommandLineOptions = parseArguments("--from", "2016-01-31", "--date", "2017-01-31");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(366));
+	}
+	
+	/**
+	 * Tests if the option {@code window} is throwing an exception if the initial date provided comes after the final date.
+	 * 
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	@Test(expected = IllegalArgumentException.class)
+	public void testCommandLineOptionFromDateInFuture() throws CmdLineException {
+		parseArguments("--from", LocalDate.now().plusDays(1).toString()).getWindowSize();
+	}
+	
+	/**
+	 * Tests if the option {@code window} is working if the initial date without year provided comes after the final date.
+	 * 
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	@Test
+	public void testCommandLineOptionFromDateInFutureWithoutYear() throws CmdLineException {
+		final LocalDate currentLocalDate = LocalDate.now();
+		
+		final CommandLineOptions parsedCommandLineOptions = parseArguments("--from", currentLocalDate.plusDays(1).toString().substring(5));
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(currentLocalDate.plusDays(1).minusYears(1), currentLocalDate)));
+	}
+	
+	/**
+	 * Tests if the option {@code window} is working when provided as an alias with its metaVar to the parser.
+	 * 
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	@Test
+	public void testCommandLineOptionFromDateWithAlias() throws CmdLineException {
+		CommandLineOptions parsedCommandLineOptions = parseArguments("-f", "2017-01-31", "--date", "2017-01-31");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(0));
+	}
+
+	/**
+	 * Tests if the command line handler is throwing an exception when it's provided with no metaVar.
+	 * 
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	@Test(expected = CmdLineException.class)
+	public void testCommandLineOptionFromDateWithNoMetaVar() throws CmdLineException {
+		this.parseArguments("--from");
+	}
+
+	/**
+	 * Tests if the option {@code from} is throwing an exception when its metaVar is in an invalid date format.
+	 * 
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	@Test(expected = DateTimeParseException.class)
+	public void testCommandLineOptionFromDateWithWrongFormat() throws CmdLineException {
+		CommandLineOptions parsedCommandLineOptions = parseArguments("--from", "30-01-2017");
+		parsedCommandLineOptions.getWindowSize();
+	}
+
+	/**
 	 * Tests if the option {@code window} is working when provided with its metaVar to the parser and its default value.
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
@@ -151,9 +264,16 @@ public class PrintDayTotalsTest {
 
 		parsedCommandLineOptions = parseArguments("--window", "0");
 		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(0));
+	}
 
-		parsedCommandLineOptions = parseArguments("--window", "-1");
-		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(-1));
+	/**
+	 * Tests if the option {@code window} is throwing an exception when it's provided with a negative value.
+	 * 
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	@Test(expected = IllegalArgumentException.class)
+	public void testCommandLineOptionWindowWithNegativeValue() throws CmdLineException {
+		parseArguments("--window", "-1").getWindowSize();
 	}
 
 	/**

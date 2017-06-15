@@ -13,5 +13,6 @@ Issues tracked by [JIRA](https://globalmentor.atlassian.net/projects/JAVA).
 ## Changelog
 
 - 1.0.0: 
-	* [JAVA-20](https://globalmentor.atlassian.net/browse/JAVA-20): Extracted this project from `com.globalmentor:globalmentor-core`.
+	* [JAVA-22](https://globalmentor.atlassian.net/browse/JAVA-22): Added options to choose an initial date for the program.
 	* [JAVA-21](https://globalmentor.atlassian.net/browse/JAVA-21): Added args4j to handle with `PrintDayTotals` arguments.
+	* [JAVA-20](https://globalmentor.atlassian.net/browse/JAVA-20): Extracted this project from `com.globalmentor:globalmentor-core`.
