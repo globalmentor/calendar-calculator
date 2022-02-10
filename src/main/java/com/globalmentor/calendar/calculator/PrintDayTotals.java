@@ -18,12 +18,15 @@ package com.globalmentor.calendar.calculator;
 
 import static com.globalmentor.calendar.calculator.CalendarCalculator.*;
 import static com.globalmentor.java.Conditions.*;
+import static java.util.Objects.*;
 
 import java.io.*;
 import java.time.*;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+
+import javax.annotation.*;
 
 import org.kohsuke.args4j.*;
 
@@ -98,7 +101,7 @@ public class PrintDayTotals {
 
 		try {
 			date = commandLineOptions.getDate();
-			resetDate = commandLineOptions.getInitialDate().orElse(null);
+			resetDate = commandLineOptions.findInitialDate().orElse(null);
 		} catch(final DateTimeParseException dateTimeParseException) {
 			System.err
 					.println("The provided date was in an invalid format. Please, make sure that the given date is correctly in the ISO-8601 format. i.e.: YYYY-MM-DD.");
@@ -165,7 +168,7 @@ public class PrintDayTotals {
 
 			System.out.print(windowTotal); //e.g. *,2011-02-03,1,5,170
 
-			commandLineOptions.getMaxDays().ifPresent(maxDays -> System.out.print("," + (maxDays - windowTotal)));//if we know the maximum number of days, include the days remaining. e.g. *,2011-02-03,1,5,170,10
+			commandLineOptions.findMaxDays().ifPresent(maxDays -> System.out.print("," + (maxDays - windowTotal)));//if we know the maximum number of days, include the days remaining. e.g. *,2011-02-03,1,5,170,10
 
 			System.out.println();
 		}
@@ -179,7 +182,7 @@ public class PrintDayTotals {
 	 */
 	static class CommandLineOptions {
 
-		@Option(name = "--date", aliases = "-d", metaVar = "<date>", usage = "The date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the current year.")
+		@Option(name = "--date", aliases = "-d", metaVar = "<date>", usage = "The ending date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the current year.")
 		private String date;
 
 		@Option(name = "--from", aliases = "-f", metaVar = "<fromDate>", forbids = {
@@ -200,7 +203,24 @@ public class PrintDayTotals {
 		private boolean help;
 
 		/**
-		 * Retrieves the date that the program must start.
+		 * The current local date for default calculations. Can be overridden in tests to prevent reliance on the true local date. Defaults to
+		 * {@link LocalDate#now()}.
+		 */
+		private LocalDate now = LocalDate.now();
+
+		/**
+		 * Overrides the local date used to represent "now".
+		 * @apiNote This method is used mostly for testing to avoid using the true current date in unit tests.
+		 * @implSpec Defaults to {@link LocalDate#now()}.
+		 * @param now
+		 */
+		public void setNow(@Nonnull final LocalDate now) {
+			this.now = requireNonNull(now);
+		}
+
+		/**
+		 * Returns the ending date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is
+		 * provided (i.e., if a date on the format <code>MM-dd</code> is provided), it will default to the current year.
 		 * 
 		 * @return The date that the program should start. It defaults to the current date if no date is provided.
 		 * @throws DateTimeParseException if the given date was in an invalid format.
@@ -212,11 +232,11 @@ public class PrintDayTotals {
 				try {
 					return LocalDate.parse(this.date); //if we cannot parse this date, an exception is thrown.
 				} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
-					return LocalDate.parse(String.format("%d-%s", Year.now().getValue(), this.date));
+					return LocalDate.parse(String.format("%d-%s", now.getYear(), this.date));
 				}
 
 			} else {
-				return LocalDate.now(); //if the date is null, we default it to the current date.
+				return now; //if the date is null, we default it to the current date.
 			}
 
 		}
@@ -227,7 +247,7 @@ public class PrintDayTotals {
 		 * @return The initial date that the program should use as reset date.
 		 * @throws DateTimeParseException if the given date was in an invalid format.
 		 */
-		public Optional<LocalDate> getInitialDate() throws DateTimeParseException {
+		public Optional<LocalDate> findInitialDate() throws DateTimeParseException {
 
 			LocalDate initialDate = null;
 
@@ -236,11 +256,12 @@ public class PrintDayTotals {
 				try {
 					initialDate = LocalDate.parse(this.fromDate); //if windowSize is null and fromDate not, the windowSize will be the amount of days between the initial date (exclusive) and the provided date (inclusive).
 				} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
-					int year = getDate().getYear();
+					final LocalDate date = getDate();
+					int year = date.getYear();
 
 					final MonthDay fromDateWithoutYear = MonthDay.parse(String.format("--%s", this.fromDate));
 
-					if(fromDateWithoutYear.isAfter(MonthDay.now())) { //if the provided initial date is after the current date, then we use its last occurrence i.e., the same date on the last year.
+					if(fromDateWithoutYear.isAfter(MonthDay.from(date))) { //if the provided initial date is after the current date, then we use its last occurrence i.e., the same date on the last year.
 						year--;
 					}
 
@@ -271,7 +292,7 @@ public class PrintDayTotals {
 			} else {
 
 				final LocalDate finalDate = getDate();
-				final LocalDate initialDate = getInitialDate().orElse(finalDate.minusYears(1)); //if windowSize and fromDate is null, we default it to the amount of days between the provided date and exactly one year before.
+				final LocalDate initialDate = findInitialDate().orElse(finalDate.minusYears(1)); //if windowSize and fromDate is null, we default it to the amount of days between the provided date and exactly one year before.
 
 				checkArgument(finalDate.compareTo(initialDate) >= 0, "<fromDate> cannot be after <date>");
 
@@ -297,7 +318,7 @@ public class PrintDayTotals {
 		 * 
 		 * @throws IllegalArgumentException if the given max number is negative.
 		 */
-		public Optional<Integer> getMaxDays() {
+		public Optional<Integer> findMaxDays() {
 
 			if(maxDays != null) {
 				return Optional.of(checkArgumentNotNegative(this.maxDays));

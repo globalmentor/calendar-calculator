@@ -28,6 +28,8 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
+import javax.annotation.*;
+
 import static org.hamcrest.Matchers.*;
 
 /**
@@ -105,13 +107,18 @@ public class PrintDayTotalsTest {
 	public void testCommandLineOptionDate() throws CmdLineException {
 		CommandLineOptions parsedCommandLineOptions;
 
-		assertThat(parseArguments().getDate(), equalTo(LocalDate.now()));
+		//Normally we would don't want to have unit tests depend on the date, but
+		//an exception is made here to ensure that the arguments default to the current
+		//date, without caring what that date is.
+		//(Technically even this usage is treacherous; it as a tiny chance of failing
+		//at midnight because of the race condition.)
+		assertThat(new CommandLineOptions().getDate(), equalTo(LocalDate.now()));
 
 		parsedCommandLineOptions = parseArguments("--date", "2017-01-30");
 		assertThat(parsedCommandLineOptions.getDate(), equalTo(LocalDate.of(2017, 1, 30)));
 
-		parsedCommandLineOptions = parseArguments("--date", "03-06");
-		assertThat(parsedCommandLineOptions.getDate(), equalTo(LocalDate.parse(String.format("%d-03-06", Year.now().getValue()))));
+		parsedCommandLineOptions = parseArguments(LocalDate.of(2019, 2, 3), "--date", "03-06");
+		assertThat(parsedCommandLineOptions.getDate(), equalTo(LocalDate.of(2019, 3, 6)));
 	}
 
 	/**
@@ -156,8 +163,8 @@ public class PrintDayTotalsTest {
 		CommandLineOptions parsedCommandLineOptions;
 
 		//tests if <fromDate> is starting exactly one year before LocalDate.now()
-		parsedCommandLineOptions = parseArguments();
-		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(LocalDate.now().minusYears(1), LocalDate.now())));
+		parsedCommandLineOptions = parseArguments(LocalDate.of(2019, 2, 3));
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(365));
 
 		//tests if <fromDate> is starting exactly one year before a given <date>
 		parsedCommandLineOptions = parseArguments("--date", "2017-03-06");
@@ -165,13 +172,20 @@ public class PrintDayTotalsTest {
 				equalTo((int)ChronoUnit.DAYS.between(LocalDate.parse("2017-03-06").minusYears(1), LocalDate.parse("2017-03-06"))));
 
 		//tests if the period between <fromDate> and LocalDate.now() is being correctly calculated
-		parsedCommandLineOptions = parseArguments("--from", "2017-03-06");
-		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(LocalDate.parse("2017-03-06"), LocalDate.now())));
+		parsedCommandLineOptions = parseArguments(LocalDate.of(2019, 2, 3), "--from", "2017-03-06");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(LocalDate.parse("2017-03-06"), LocalDate.of(2019, 2, 3))));
 
-		//tests if the period between <fromDate> and LocalDate.now() is being correctly calculated without explicit use of a year
-		parsedCommandLineOptions = parseArguments("--from", "03-06");
-		assertThat(parsedCommandLineOptions.getWindowSize(),
-				equalTo((int)ChronoUnit.DAYS.between(LocalDate.parse(String.format("%d-03-06", Year.now().getValue())), LocalDate.now())));
+		//tests if the period between <fromDate> and LocalDate.now() is being correctly calculated without explicit use of a year, if <fromDate> is earlier than now
+		parsedCommandLineOptions = parseArguments(LocalDate.of(2019, 7, 8), "--from", "03-06");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(LocalDate.of(2019, 3, 6), LocalDate.of(2019, 7, 8))));
+
+		//tests if the period between <fromDate> and LocalDate.now() is being correctly calculated without explicit use of a year, if <fromDate> is the same as now
+		parsedCommandLineOptions = parseArguments(LocalDate.of(2019, 3, 6), "--from", "03-06");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(0));
+
+		//tests if the period between <fromDate> and LocalDate.now() is being correctly calculated without explicit use of a year, if <fromDate> is later than now
+		parsedCommandLineOptions = parseArguments(LocalDate.of(2019, 2, 3), "--from", "03-06");
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(LocalDate.of(2018, 3, 6), LocalDate.of(2019, 2, 3))));
 
 		//tests if the period between <fromDate> and <date> is being correctly calculated without explicit use of an year
 		parsedCommandLineOptions = parseArguments("--from", "03-06", "--date", "2017-03-06");
@@ -193,7 +207,7 @@ public class PrintDayTotalsTest {
 		parsedCommandLineOptions = parseArguments("--from", "2016-01-31", "--date", "2017-01-31");
 		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(366));
 	}
-	
+
 	/**
 	 * Tests if the option {@code window} is throwing an exception if the initial date provided comes after the final date.
 	 * 
@@ -201,9 +215,9 @@ public class PrintDayTotalsTest {
 	 */
 	@Test(expected = IllegalArgumentException.class)
 	public void testCommandLineOptionFromDateInFuture() throws CmdLineException {
-		parseArguments("--from", LocalDate.now().plusDays(1).toString()).getWindowSize();
+		parseArguments(LocalDate.of(2019, 2, 3), "--from", LocalDate.of(2019, 2, 3).plusDays(1).toString()).getWindowSize();
 	}
-	
+
 	/**
 	 * Tests if the option {@code window} is working if the initial date without year provided comes after the final date.
 	 * 
@@ -211,12 +225,12 @@ public class PrintDayTotalsTest {
 	 */
 	@Test
 	public void testCommandLineOptionFromDateInFutureWithoutYear() throws CmdLineException {
-		final LocalDate currentLocalDate = LocalDate.now();
-		
-		final CommandLineOptions parsedCommandLineOptions = parseArguments("--from", currentLocalDate.plusDays(1).toString().substring(5));
-		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(currentLocalDate.plusDays(1).minusYears(1), currentLocalDate)));
+		final LocalDate testNow = LocalDate.of(2019, 2, 3);
+
+		final CommandLineOptions parsedCommandLineOptions = parseArguments(testNow, "--from", testNow.plusDays(1).toString().substring(5));
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(testNow.plusDays(1).minusYears(1), testNow)));
 	}
-	
+
 	/**
 	 * Tests if the option {@code window} is working when provided as an alias with its metaVar to the parser.
 	 * 
@@ -256,8 +270,10 @@ public class PrintDayTotalsTest {
 	 */
 	@Test
 	public void testCommandLineOptionWindow() throws CmdLineException {
+		final LocalDate testNow = LocalDate.of(2019, 2, 3);
 		CommandLineOptions parsedCommandLineOptions = new CommandLineOptions();
-		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(LocalDate.now().minusYears(1), LocalDate.now())));
+		parsedCommandLineOptions.setNow(testNow);
+		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo((int)ChronoUnit.DAYS.between(testNow.minusYears(1), testNow)));
 
 		parsedCommandLineOptions = parseArguments("--window", "1");
 		assertThat(parsedCommandLineOptions.getWindowSize(), equalTo(1));
@@ -305,13 +321,13 @@ public class PrintDayTotalsTest {
 	@Test
 	public void testCommandLineOptionMax() throws CmdLineException {
 		CommandLineOptions parsedCommandLineOptions = new CommandLineOptions();
-		assertThat(parsedCommandLineOptions.getMaxDays(), equalTo(Optional.empty()));
+		assertThat(parsedCommandLineOptions.findMaxDays(), equalTo(Optional.empty()));
 
 		parsedCommandLineOptions = parseArguments("--max", "1");
-		assertThat(parsedCommandLineOptions.getMaxDays().get(), equalTo(1));
+		assertThat(parsedCommandLineOptions.findMaxDays().get(), equalTo(1));
 
 		parsedCommandLineOptions = parseArguments("--max", "0");
-		assertThat(parsedCommandLineOptions.getMaxDays().get(), equalTo(0));
+		assertThat(parsedCommandLineOptions.findMaxDays().get(), equalTo(0));
 	}
 
 	/**
@@ -321,7 +337,7 @@ public class PrintDayTotalsTest {
 	 */
 	@Test(expected = IllegalArgumentException.class)
 	public void testCommandLineOptionMaxWithNegativaValue() throws CmdLineException {
-		parseArguments("--max", "-1").getMaxDays();
+		parseArguments("--max", "-1").findMaxDays();
 	}
 
 	/**
@@ -332,7 +348,7 @@ public class PrintDayTotalsTest {
 	@Test
 	public void testCommandLineOptionMaxWithAlias() throws CmdLineException {
 		CommandLineOptions parsedCommandLineOptions = parseArguments("-x", "1");
-		assertThat(parsedCommandLineOptions.getMaxDays().get(), equalTo(1));
+		assertThat(parsedCommandLineOptions.findMaxDays().get(), equalTo(1));
 	}
 
 	/**
@@ -389,15 +405,30 @@ public class PrintDayTotalsTest {
 	/**
 	 * Parses the given arguments into a {@link CommandLineOptions} to encapsulate the logic of parsing the arguments in each tests.
 	 * 
+	 * @implSpec This implementation delegates to {@link #parseArguments(LocalDate, String...)} with the current date from {@link LocalDate#now()}.
 	 * @param args The arguments to be parsed.
 	 * @return The {@link CommandLineOptions} with the parsed arguments.
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
 	private CommandLineOptions parseArguments(final String... args) throws CmdLineException {
+		return parseArguments(LocalDate.now(), args);
+	}
+
+	/**
+	 * Parses the given arguments into a {@link CommandLineOptions} to encapsulate the logic of parsing the arguments in each tests. An explicit local date is
+	 * given to be considered "now".
+	 * 
+	 * @param now The current local date to use as the current date+time when processing the command line arguments.
+	 * @param args The arguments to be parsed.
+	 * @return The {@link CommandLineOptions} with the parsed arguments.
+	 * @throws CmdLineException if an error occurs while parsing the arguments.
+	 */
+	private CommandLineOptions parseArguments(@Nonnull final LocalDate now, final String... args) throws CmdLineException {
 		final CommandLineOptions commandLineOptions = new CommandLineOptions();
 
 		new CmdLineParser(commandLineOptions).parseArgument(args);
 
+		commandLineOptions.setNow(now);
 		return commandLineOptions;
 	}
 
