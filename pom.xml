@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.globalmentor</groupId>
 	<artifactId>calendar-calculator</artifactId>
-	<version>1.0.1-SNAPSHOT</version>
+	<version>1.0.1</version>
 	<packaging>jar</packaging>
 
 	<name>Calendar Calculator</name>
@@ -48,6 +47,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.release>8</maven.compiler.release> <!-- JDK 9+ required to build -->
 	</properties>
 
 	<dependencies>
@@ -89,11 +89,19 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.5.1</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-				</configuration>
+				<version>3.8.0</version>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>3.0.1</version>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.22.1</version>
 			</plugin>
 
 			<plugin>
@@ -143,13 +151,50 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>2.10.3</version>
 						<configuration>
 							<quiet>true</quiet>
+							<detectOfflineLinks>false</detectOfflineLinks>
+							<tags>
+								<tag>
+									<name>apiNote</name>
+									<placement>a</placement>
+									<head>API Note:</head>
+								</tag>
+								<tag>
+									<name>implSpec</name>
+									<placement>a</placement>
+									<head>Implementation Specification:</head>
+								</tag>
+								<tag>
+									<name>implNote</name>
+									<placement>a</placement>
+									<head>Implementation Note:</head>
+								</tag>
+								<tag>
+									<name>param</name>
+								</tag>
+								<tag>
+									<name>return</name>
+								</tag>
+								<tag>
+									<name>throws</name>
+								</tag>
+								<tag>
+									<name>since</name>
+								</tag>
+								<tag>
+									<name>version</name>
+								</tag>
+								<tag>
+									<name>serialData</name>
+								</tag>
+								<tag>
+									<name>see</name>
+								</tag>
+							</tags>
 						</configuration>
 						<executions>
 							<execution>
-								<id>package-javadocs</id>
 								<goals>
 									<goal>jar</goal>
 								</goals>
