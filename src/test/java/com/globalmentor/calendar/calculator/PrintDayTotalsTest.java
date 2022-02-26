@@ -16,12 +16,10 @@
 
 package com.globalmentor.calendar.calculator;
 
-import org.junit.*;
+import org.junit.jupiter.api.Test;
 import org.kohsuke.args4j.*;
 
 import com.globalmentor.calendar.calculator.PrintDayTotals.CommandLineOptions;
-
-import static org.junit.Assert.*;
 
 import java.time.*;
 import java.time.format.DateTimeParseException;
@@ -30,7 +28,9 @@ import java.util.Optional;
 
 import javax.annotation.*;
 
+import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests to the arguments used in the {@link PrintDayTotals} program.
@@ -137,10 +137,9 @@ public class PrintDayTotalsTest {
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
-	@Test(expected = DateTimeParseException.class)
 	public void testCommandLineOptionDateWithWrongFormat() throws CmdLineException {
 		CommandLineOptions parsedCommandLineOptions = parseArguments("--date", "30-01-2017");
-		parsedCommandLineOptions.getDate();
+		assertThrows(DateTimeParseException.class, () -> parsedCommandLineOptions.getDate());
 	}
 
 	/**
@@ -148,9 +147,8 @@ public class PrintDayTotalsTest {
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
-	@Test(expected = CmdLineException.class)
 	public void testCommandLineOptionDateWithNoMetaVar() throws CmdLineException {
-		this.parseArguments("--date");
+		assertThrows(CmdLineException.class, () -> this.parseArguments("--date"));
 	}
 
 	/**
@@ -213,9 +211,9 @@ public class PrintDayTotalsTest {
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
-	@Test(expected = IllegalArgumentException.class)
 	public void testCommandLineOptionFromDateInFuture() throws CmdLineException {
-		parseArguments(LocalDate.of(2019, 2, 3), "--from", LocalDate.of(2019, 2, 3).plusDays(1).toString()).getWindowSize();
+		assertThrows(IllegalArgumentException.class,
+				() -> parseArguments(LocalDate.of(2019, 2, 3), "--from", LocalDate.of(2019, 2, 3).plusDays(1).toString()).getWindowSize());
 	}
 
 	/**
@@ -247,9 +245,8 @@ public class PrintDayTotalsTest {
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
-	@Test(expected = CmdLineException.class)
 	public void testCommandLineOptionFromDateWithNoMetaVar() throws CmdLineException {
-		this.parseArguments("--from");
+		assertThrows(CmdLineException.class, () -> this.parseArguments("--from"));
 	}
 
 	/**
@@ -257,10 +254,9 @@ public class PrintDayTotalsTest {
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
-	@Test(expected = DateTimeParseException.class)
 	public void testCommandLineOptionFromDateWithWrongFormat() throws CmdLineException {
 		CommandLineOptions parsedCommandLineOptions = parseArguments("--from", "30-01-2017");
-		parsedCommandLineOptions.getWindowSize();
+		assertThrows(DateTimeParseException.class, () -> parsedCommandLineOptions.getWindowSize());
 	}
 
 	/**
@@ -287,9 +283,8 @@ public class PrintDayTotalsTest {
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
-	@Test(expected = IllegalArgumentException.class)
 	public void testCommandLineOptionWindowWithNegativeValue() throws CmdLineException {
-		parseArguments("--window", "-1").getWindowSize();
+		assertThrows(IllegalArgumentException.class, () -> parseArguments("--window", "-1").getWindowSize());
 	}
 
 	/**
@@ -308,9 +303,8 @@ public class PrintDayTotalsTest {
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
-	@Test(expected = CmdLineException.class)
 	public void testCommandLineOptionWindowWithNoMetaVar() throws CmdLineException {
-		this.parseArguments("--window");
+		assertThrows(CmdLineException.class, () -> this.parseArguments("--window"));
 	}
 
 	/**
@@ -335,9 +329,8 @@ public class PrintDayTotalsTest {
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
-	@Test(expected = IllegalArgumentException.class)
 	public void testCommandLineOptionMaxWithNegativaValue() throws CmdLineException {
-		parseArguments("--max", "-1").findMaxDays();
+		assertThrows(IllegalArgumentException.class, () -> parseArguments("--max", "-1").findMaxDays());
 	}
 
 	/**
@@ -356,9 +349,8 @@ public class PrintDayTotalsTest {
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
-	@Test(expected = CmdLineException.class)
 	public void testCommandLineOptionMaxWithNoMetaVar() throws CmdLineException {
-		this.parseArguments("--max");
+		assertThrows(CmdLineException.class, () -> this.parseArguments("--max"));
 	}
 
 	/**
@@ -397,9 +389,8 @@ public class PrintDayTotalsTest {
 	 * 
 	 * @throws CmdLineException if an error occurs while parsing the arguments.
 	 */
-	@Test(expected = CmdLineException.class)
 	public void testCommandLineOptionHistoryWithNoMetaVar() throws CmdLineException {
-		this.parseArguments("--history");
+		assertThrows(CmdLineException.class, () -> this.parseArguments("--history"));
 	}
 
 	/**
