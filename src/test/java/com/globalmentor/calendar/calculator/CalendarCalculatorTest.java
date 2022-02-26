@@ -25,7 +25,6 @@ import java.util.*;
 
 import org.junit.jupiter.api.Test;
 
-import com.globalmentor.iso.datetime.ISODate;
 import com.globalmentor.model.*;
 
 /**
@@ -57,7 +56,7 @@ public class CalendarCalculatorTest {
 		assertThat(dayCounts.get(LocalDate.of(2002, 3, 4)).getCount(), is(1L));
 	}
 
-	/** @see CalendarCalculator#getDayTotals(ISODate, int, Map) */
+	/** @see CalendarCalculator#getDayTotals(LocalDate, int, Map) */
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testGetDayTotals() {
