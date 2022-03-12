@@ -28,10 +28,12 @@ import java.util.*;
 
 import javax.annotation.*;
 
-import org.kohsuke.args4j.*;
-
+import com.globalmentor.application.*;
 import com.globalmentor.io.BOMInputStreamReader;
 import com.globalmentor.model.*;
+
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 /**
  * A console application to print the totals of days overlapping some ranges. This is useful, for example, in calculating the number of days in a country for
@@ -66,42 +68,35 @@ import com.globalmentor.model.*;
  * @author Garret Wilson
  * 
  */
-public class PrintDayTotals {
+@Command(name = "print-day-totals", description = "A console application to print the totals of days overlapping some ranges.")
+public class PrintDayTotals extends BaseCliApplication {
 
 	/**
-	 * The main logic of the program.
-	 * 
-	 * @param args The arguments to be used on its execution.
-	 * @throws UnsupportedEncodingException if an input stream with an invalid BOM is read.
-	 * @throws IOException if an I/O error occurs.
-	 * 
-	 * @see CommandLineOptions
+	 * Constructor.
+	 * @param args The command line arguments.
 	 */
-	public static void main(final String[] args) throws UnsupportedEncodingException, IOException {
+	public PrintDayTotals(@Nonnull final String[] args) {
+		super(args);
+	}
 
-		final CommandLineOptions commandLineOptions = new CommandLineOptions();
-		final CmdLineParser commandLineParser = new CmdLineParser(commandLineOptions);
+	/**
+	 * Main program entry method.
+	 * @param args Program arguments.
+	 */
+	public static void main(@Nonnull final String[] args) {
+		Application.start(new PrintDayTotals(args));
+	}
 
-		try {
-			commandLineParser.parseArgument(args);
-		} catch(CmdLineException cmdLineException) {
-			System.err.println(String.format("One of the arguments of the program weren't type correctly: %s", cmdLineException.getMessage()));
-			commandLineParser.printUsage(System.out);
-			System.exit(1);
-		}
-
-		if(commandLineOptions.help()) { //if the command help was called, we print the usage and finish the execution of the program.
-			commandLineParser.printUsage(System.out);
-			System.exit(0);
-		}
+	@Override
+	public void run() {
 
 		//parse the parameters
 		LocalDate date = null;
 		LocalDate resetDate = null;
 
 		try {
-			date = commandLineOptions.getDate();
-			resetDate = commandLineOptions.findInitialDate().orElse(null);
+			date = getDate();
+			resetDate = findInitialDate().orElse(null);
 		} catch(final DateTimeParseException dateTimeParseException) {
 			System.err
 					.println("The provided date was in an invalid format. Please, make sure that the given date is correctly in the ISO-8601 format. i.e.: YYYY-MM-DD.");
@@ -110,22 +105,25 @@ public class PrintDayTotals {
 
 		assert date != null : "<date> should not be null at this point of the program";
 
-		final int windowSize = commandLineOptions.getWindowSize();
-		final int historyCount = commandLineOptions.getHistoryCount();
+		final int windowSize = getWindowSize();
+		final int historyCount = getHistoryCount();
 
 		//parse the ranges from System.in
 		final Set<Range<LocalDate>> ranges = new HashSet<Range<LocalDate>>();
 
-		@SuppressWarnings("resource")
-		//we shouldn't close the input stream
-		final LineNumberReader reader = new LineNumberReader(new BOMInputStreamReader(System.in));
+		try {
+			//we shouldn't close the input stream
+			final LineNumberReader reader = new LineNumberReader(new BOMInputStreamReader(System.in));
 
-		String line;
+			String line;
 
-		while((line = reader.readLine()) != null) {
-			final String[] lineComponents = line.split(",");
-			checkArgument(lineComponents.length == 2, "Expected two components on line %d: %s", reader.getLineNumber(), line);
-			ranges.add(new Range<LocalDate>(LocalDate.parse(lineComponents[0]), LocalDate.parse(lineComponents[1]))); //parse and store the range
+			while((line = reader.readLine()) != null) {
+				final String[] lineComponents = line.split(",");
+				checkArgument(lineComponents.length == 2, "Expected two components on line %d: %s", reader.getLineNumber(), line);
+				ranges.add(new Range<LocalDate>(LocalDate.parse(lineComponents[0]), LocalDate.parse(lineComponents[1]))); //parse and store the range
+			}
+		} catch(final IOException ioException) {
+			throw new UncheckedIOException(ioException);
 		}
 
 		//count the days
@@ -168,169 +166,155 @@ public class PrintDayTotals {
 
 			System.out.print(windowTotal); //e.g. *,2011-02-03,1,5,170
 
-			commandLineOptions.findMaxDays().ifPresent(maxDays -> System.out.print("," + (maxDays - windowTotal)));//if we know the maximum number of days, include the days remaining. e.g. *,2011-02-03,1,5,170,10
+			findMaxDays().ifPresent(maxDays -> System.out.print("," + (maxDays - windowTotal)));//if we know the maximum number of days, include the days remaining. e.g. *,2011-02-03,1,5,170,10
 
 			System.out.println();
 		}
 
 	}
 
+	@Option(names = {
+			"--date"}, paramLabel = "<date>", description = "The ending date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the current year.")
+	private String date;
+
+	@Option(names = {"--from",
+			"-f"}, paramLabel = "<fromDate>", description = "The initial date to be used for the calculations. This will set up the window size automatically. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the last occurrence of the provided date.")
+	private String fromDate;
+
+	@Option(names = {"--window",
+			"-w"}, paramLabel = "<windowSize>", description = "The number of days back to include in each total. If no window size is provided, the number of days between the given date and the same date a year before will be used.")
+	private Integer windowSize;
+
+	@Option(names = {"--max",
+			"-x"}, paramLabel = "<maxDays>", description = "The maximum number of days to be included. If no maximum number is provided, all the days will be included.")
+	private Integer maxDays;
+
+	@Option(names = {"--history",
+			"-c"}, paramLabel = "<historyCount>", description = "The number of day totals to include. If no history count is provided, the window size will be used.")
+	private Integer historyCount;
+
 	/**
-	 * Command Line Option Handler to the {@link PrintDayTotals} program.
-	 * 
-	 * @author Magno Nascimento
+	 * The current local date for default calculations. Can be overridden in tests to prevent reliance on the true local date. Defaults to
+	 * {@link LocalDate#now()}.
 	 */
-	static class CommandLineOptions {
+	private LocalDate now = LocalDate.now();
 
-		@Option(name = "--date", aliases = "-d", metaVar = "<date>", usage = "The ending date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the current year.")
-		private String date;
+	/**
+	 * Overrides the local date used to represent "now".
+	 * @apiNote This method is used mostly for testing to avoid using the true current date in unit tests.
+	 * @implSpec Defaults to {@link LocalDate#now()}.
+	 * @param now
+	 */
+	void setNow(@Nonnull final LocalDate now) {
+		this.now = requireNonNull(now);
+	}
 
-		@Option(name = "--from", aliases = "-f", metaVar = "<fromDate>", forbids = {
-				"--window"}, usage = "The initial date to be used for the calculations. This will set up the window size automatically. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the last occurrence of the provided date.")
-		private String fromDate;
+	/**
+	 * Returns the ending date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is provided
+	 * (i.e., if a date on the format <code>MM-dd</code> is provided), it will default to the current year.
+	 * 
+	 * @return The date that the program should start. It defaults to the current date if no date is provided.
+	 * @throws DateTimeParseException if the given date was in an invalid format.
+	 */
+	LocalDate getDate() throws DateTimeParseException {
 
-		@Option(name = "--window", aliases = "-w", metaVar = "<windowSize>", forbids = {
-				"--from"}, usage = "The number of days back to include in each total. If no window size is provided, the number of days between the given date and the same date a year before will be used.")
-		private Integer windowSize;
+		if(this.date != null) {
 
-		@Option(name = "--max", aliases = "-x", metaVar = "<maxDays>", usage = "The maximum number of days to be included. If no maximum number is provided, all the days will be included.")
-		private Integer maxDays;
+			try {
+				return LocalDate.parse(this.date); //if we cannot parse this date, an exception is thrown.
+			} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
+				return LocalDate.parse(String.format("%d-%s", now.getYear(), this.date));
+			}
 
-		@Option(name = "--history", aliases = "-h", metaVar = "<historyCount>", usage = "The number of day totals to include. If no history count is provided, the window size will be used.")
-		private Integer historyCount;
-
-		@Option(name = "--help", help = true, usage = "Presents the information of the command-line options usage. If this option is enabled, all the other arguments will be ignored.")
-		private boolean help;
-
-		/**
-		 * The current local date for default calculations. Can be overridden in tests to prevent reliance on the true local date. Defaults to
-		 * {@link LocalDate#now()}.
-		 */
-		private LocalDate now = LocalDate.now();
-
-		/**
-		 * Overrides the local date used to represent "now".
-		 * @apiNote This method is used mostly for testing to avoid using the true current date in unit tests.
-		 * @implSpec Defaults to {@link LocalDate#now()}.
-		 * @param now
-		 */
-		public void setNow(@Nonnull final LocalDate now) {
-			this.now = requireNonNull(now);
+		} else {
+			return now; //if the date is null, we default it to the current date.
 		}
 
-		/**
-		 * Returns the ending date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is
-		 * provided (i.e., if a date on the format <code>MM-dd</code> is provided), it will default to the current year.
-		 * 
-		 * @return The date that the program should start. It defaults to the current date if no date is provided.
-		 * @throws DateTimeParseException if the given date was in an invalid format.
-		 */
-		public LocalDate getDate() throws DateTimeParseException {
+	}
 
-			if(this.date != null) {
+	/**
+	 * Retrieves the initial date that the program must use as reset date.
+	 * 
+	 * @return The initial date that the program should use as reset date.
+	 * @throws DateTimeParseException if the given date was in an invalid format.
+	 */
+	Optional<LocalDate> findInitialDate() throws DateTimeParseException {
 
-				try {
-					return LocalDate.parse(this.date); //if we cannot parse this date, an exception is thrown.
-				} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
-					return LocalDate.parse(String.format("%d-%s", now.getYear(), this.date));
+		LocalDate initialDate = null;
+
+		if(this.fromDate != null) {
+
+			try {
+				initialDate = LocalDate.parse(this.fromDate); //if windowSize is null and fromDate not, the windowSize will be the amount of days between the initial date (exclusive) and the provided date (inclusive).
+			} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
+				final LocalDate date = getDate();
+				int year = date.getYear();
+
+				final MonthDay fromDateWithoutYear = MonthDay.parse(String.format("--%s", this.fromDate));
+
+				if(fromDateWithoutYear.isAfter(MonthDay.from(date))) { //if the provided initial date is after the current date, then we use its last occurrence i.e., the same date on the last year.
+					year--;
 				}
 
-			} else {
-				return now; //if the date is null, we default it to the current date.
+				initialDate = fromDateWithoutYear.atYear(year); //if initialDate could not be parsed with ISO_LOCAL_DATE, we try to parse it using MonthDay at the year of the last occurrence of the provided date.
 			}
 
+			return Optional.of(initialDate);
+		} else {
+			return Optional.empty();
 		}
 
-		/**
-		 * Retrieves the initial date that the program must use as reset date.
-		 * 
-		 * @return The initial date that the program should use as reset date.
-		 * @throws DateTimeParseException if the given date was in an invalid format.
-		 */
-		public Optional<LocalDate> findInitialDate() throws DateTimeParseException {
+	}
 
-			LocalDate initialDate = null;
+	/**
+	 * @return The window size that the program must use. If an initial date is provided, window size will be the amount of days between the initial date and the
+	 *         date provided for calculations. If both window size and initial date are not provided it defaults to the amount of days between the current date
+	 *         (inclusive) and the date of one year before (exclusive).
+	 * @throws IllegalArgumentException if the given window size is a negative value.
+	 * @throws DateTimeParseException if the given date was in an invalid format.
+	 */
+	int getWindowSize() {
+		int windowSize;
 
-			if(this.fromDate != null) {
+		if(this.windowSize != null) { //safe auto-unboxing after checking windowSize for null. 
+			checkArgument(this.windowSize >= 0, "<windowSize> cannot be after less than 0");
 
-				try {
-					initialDate = LocalDate.parse(this.fromDate); //if windowSize is null and fromDate not, the windowSize will be the amount of days between the initial date (exclusive) and the provided date (inclusive).
-				} catch(final DateTimeParseException dateTimeParseExceptionLocalISO) {
-					final LocalDate date = getDate();
-					int year = date.getYear();
+			windowSize = this.windowSize;
+		} else {
 
-					final MonthDay fromDateWithoutYear = MonthDay.parse(String.format("--%s", this.fromDate));
+			final LocalDate finalDate = getDate();
+			final LocalDate initialDate = findInitialDate().orElse(finalDate.minusYears(1)); //if windowSize and fromDate is null, we default it to the amount of days between the provided date and exactly one year before.
 
-					if(fromDateWithoutYear.isAfter(MonthDay.from(date))) { //if the provided initial date is after the current date, then we use its last occurrence i.e., the same date on the last year.
-						year--;
-					}
+			checkArgument(finalDate.compareTo(initialDate) >= 0, "<fromDate> cannot be after <date>");
 
-					initialDate = fromDateWithoutYear.atYear(year); //if initialDate could not be parsed with ISO_LOCAL_DATE, we try to parse it using MonthDay at the year of the last occurrence of the provided date.
-				}
-
-				return Optional.of(initialDate);
-			} else {
-				return Optional.empty();
-			}
-
+			windowSize = (int)ChronoUnit.DAYS.between(initialDate, finalDate);
 		}
 
-		/**
-		 * @return The window size that the program must use. If an initial date is provided, window size will be the amount of days between the initial date and
-		 *         the date provided for calculations. If both window size and initial date are not provided it defaults to the amount of days between the current
-		 *         date (inclusive) and the date of one year before (exclusive).
-		 * @throws IllegalArgumentException if the given window size is a negative value.
-		 * @throws DateTimeParseException if the given date was in an invalid format.
-		 */
-		public int getWindowSize() {
-			int windowSize;
+		return windowSize;
+	}
 
-			if(this.windowSize != null) { //safe auto-unboxing after checking windowSize for null. 
-				checkArgument(this.windowSize >= 0, "<windowSize> cannot be after less than 0");
+	/** @return The history count that must be used by the program. It defaults to the window size if no history count is provided. */
+	int getHistoryCount() {
 
-				windowSize = this.windowSize;
-			} else {
-
-				final LocalDate finalDate = getDate();
-				final LocalDate initialDate = findInitialDate().orElse(finalDate.minusYears(1)); //if windowSize and fromDate is null, we default it to the amount of days between the provided date and exactly one year before.
-
-				checkArgument(finalDate.compareTo(initialDate) >= 0, "<fromDate> cannot be after <date>");
-
-				windowSize = (int)ChronoUnit.DAYS.between(initialDate, finalDate);
-			}
-
-			return windowSize;
+		if(this.historyCount != null) {
+			return this.historyCount;
+		} else {
+			return getWindowSize();
 		}
 
-		/** @return The history count that must be used by the program. It defaults to the window size if no history count is provided. */
-		public int getHistoryCount() {
+	}
 
-			if(this.historyCount != null) {
-				return this.historyCount;
-			} else {
-				return getWindowSize();
-			}
+	/**
+	 * @return The amount of days that must be printed to the user.
+	 * 
+	 * @throws IllegalArgumentException if the given max number is negative.
+	 */
+	Optional<Integer> findMaxDays() {
 
-		}
-
-		/**
-		 * @return The amount of days that must be printed to the user.
-		 * 
-		 * @throws IllegalArgumentException if the given max number is negative.
-		 */
-		public Optional<Integer> findMaxDays() {
-
-			if(maxDays != null) {
-				return Optional.of(checkArgumentNotNegative(this.maxDays));
-			} else {
-				return Optional.empty();
-			}
-
-		}
-
-		/** @return {@code true} if the command help was called. */
-		public boolean help() {
-			return this.help;
+		if(maxDays != null) {
+			return Optional.of(checkArgumentNotNegative(this.maxDays));
+		} else {
+			return Optional.empty();
 		}
 
 	}

@@ -17,15 +17,14 @@
 package com.globalmentor.calendar.calculator;
 
 import static com.globalmentor.collections.Sets.*;
+import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.*;
 
 import java.time.LocalDate;
 import java.util.*;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import com.globalmentor.iso.datetime.ISODate;
 import com.globalmentor.model.*;
 
 /**
@@ -44,12 +43,12 @@ public class CalendarCalculatorTest {
 		Map<LocalDate, Count> dayCounts;
 		//no ranges
 		dayCounts = CalendarCalculator.getDayCounts(Collections.<Range<LocalDate>>emptySet());
-		assertTrue(dayCounts.isEmpty());
+		assertThat(dayCounts.isEmpty(), is(true));
 		//a single day
 		dayCounts = CalendarCalculator.getDayCounts(immutableSetOf(new Range<LocalDate>(LocalDate.of(2002, 3, 2), LocalDate.of(2002, 3, 2))));
-		assertFalse(dayCounts.containsKey(LocalDate.of(2002, 3, 1)));
+		assertThat(dayCounts.containsKey(LocalDate.of(2002, 3, 1)), is(false));
 		assertThat(dayCounts.get(LocalDate.of(2002, 3, 2)).getCount(), is(1L));
-		assertFalse(dayCounts.containsKey(LocalDate.of(2002, 3, 3)));
+		assertThat(dayCounts.containsKey(LocalDate.of(2002, 3, 3)), is(false));
 		//a whole year, one range
 		dayCounts = CalendarCalculator.getDayCounts(immutableSetOf(new Range<LocalDate>(LocalDate.of(2001, 3, 5), LocalDate.of(2002, 3, 4))));
 		assertThat(dayCounts.get(LocalDate.of(2001, 3, 5)).getCount(), is(1L));
@@ -57,13 +56,13 @@ public class CalendarCalculatorTest {
 		assertThat(dayCounts.get(LocalDate.of(2002, 3, 4)).getCount(), is(1L));
 	}
 
-	/** @see CalendarCalculator#getDayTotals(ISODate, int, Map) */
+	/** @see CalendarCalculator#getDayTotals(LocalDate, int, Map) */
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testGetDayTotals() {
 		Map<LocalDate, Count> dayCounts;
 		Map<LocalDate, Long> dayTotals;
-		
+
 		//no ranges
 		dayCounts = CalendarCalculator.getDayCounts(Collections.<Range<LocalDate>>emptySet());
 		dayTotals = CalendarCalculator.getDayTotals(LocalDate.of(2002, 3, 4), 365, dayCounts);
@@ -71,7 +70,7 @@ public class CalendarCalculatorTest {
 		for(final Map.Entry<LocalDate, Long> dayTotalEntry : dayTotals.entrySet()) {
 			assertThat(dayTotalEntry.getValue(), is(0L));
 		}
-		
+
 		//a single day
 		dayCounts = CalendarCalculator.getDayCounts(immutableSetOf(new Range<LocalDate>(LocalDate.of(2002, 3, 2), LocalDate.of(2002, 3, 2))));
 		dayTotals = CalendarCalculator.getDayTotals(LocalDate.of(2002, 3, 4), 365, dayCounts);
@@ -79,7 +78,7 @@ public class CalendarCalculatorTest {
 		assertThat(dayTotals.get(LocalDate.of(2002, 3, 1)), is(0L));
 		assertThat(dayTotals.get(LocalDate.of(2002, 3, 2)), is(1L));
 		assertThat(dayTotals.get(LocalDate.of(2002, 3, 3)), is(1L));
-		
+
 		//a whole year, one range
 		dayCounts = CalendarCalculator.getDayCounts(immutableSetOf(new Range<LocalDate>(LocalDate.of(2001, 3, 5), LocalDate.of(2002, 3, 4))));
 		dayTotals = CalendarCalculator.getDayTotals(LocalDate.of(2002, 3, 4), 365, dayCounts);
@@ -87,7 +86,7 @@ public class CalendarCalculatorTest {
 		assertThat(dayTotals.get(LocalDate.of(2001, 3, 5)), is(1L));
 		assertThat(dayTotals.get(LocalDate.of(2001, 3, 12)), is(8L));
 		assertThat(dayTotals.get(LocalDate.of(2002, 3, 4)), is(365L));
-		
+
 		//a whole year with a reset date
 		dayCounts = CalendarCalculator.getDayCounts(immutableSetOf(new Range<LocalDate>(LocalDate.of(2001, 3, 5), LocalDate.of(2002, 3, 4))));
 		dayTotals = CalendarCalculator.getDayTotals(LocalDate.of(2002, 03, 04), LocalDate.of(2002, 1, 1), 365, dayCounts);
@@ -99,7 +98,7 @@ public class CalendarCalculatorTest {
 		assertThat(dayTotals.get(LocalDate.of(2002, 1, 1)), is(1L));
 		assertThat(dayTotals.get(LocalDate.of(2002, 1, 8)), is(8L));
 		assertThat(dayTotals.get(LocalDate.of(2002, 3, 4)), is(63L));
-		
+
 	}
 
 }
