@@ -127,7 +127,8 @@ public class PrintDayTotals extends BaseCliApplication {
 		}
 
 		//count the days
-		final Map<LocalDate, Count> dayCounts = getDayCounts(ranges);
+		final boolean inclusive = rangeUpperBound == RangeBoundType.inclusive;
+		final Map<LocalDate, Count> dayCounts = getDayCounts(ranges, inclusive);
 
 		//calculate the totals
 		final Map<LocalDate, Long> dayTotals = getDayTotals(date, resetDate, windowSize, historyCount, dayCounts);
@@ -173,8 +174,7 @@ public class PrintDayTotals extends BaseCliApplication {
 
 	}
 
-	@Option(names = {
-			"--date"}, paramLabel = "<date>", description = "The ending date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the current year.")
+	@Option(names = "--date", paramLabel = "<date>", description = "The ending date that the program will use for the calculations. If no date is provided, the current local date will be used. If no year is provided (i.e., if a date on the format [MM-dd] is provided), it will default to the current year.")
 	private String date;
 
 	@Option(names = {"--from",
@@ -192,6 +192,17 @@ public class PrintDayTotals extends BaseCliApplication {
 	@Option(names = {"--history",
 			"-c"}, paramLabel = "<historyCount>", description = "The number of day totals to include. If no history count is provided, the window size will be used.")
 	private Integer historyCount;
+
+	/** Whether a range bound should be included in the totals. */
+	public enum RangeBoundType {
+		/** The range bound should be included. */
+		inclusive,
+		/** The range bound should not be included. */
+		exclusive
+	}
+
+	@Option(names = "--range-upper-bound", description = "Whether the last date in each range should be included in the totals.%nValid values: ${COMPLETION-CANDIDATES}.%nDefaults to @|bold ${DEFAULT-VALUE}|@.", defaultValue = "inclusive", arity = "0..1")
+	private RangeBoundType rangeUpperBound;
 
 	/**
 	 * The current local date for default calculations. Can be overridden in tests to prevent reliance on the true local date. Defaults to
