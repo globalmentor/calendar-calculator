@@ -33,15 +33,15 @@ import java.time.MonthDay;
 public class CalendarCalculator {
 
 	/**
-	 * Calculates the counts of calendar days before that intersect a set of ranges. If an exclusive range upper bound is requested, the upper bound date will
+	 * Calculates the counts of calendar days before that intersect a set of ranges. If an exclusive range lower bound is requested, the lower bound date will
 	 * nevertheless be provided at least a count of <code>0</code> for convenience, to indicate that the date has been considered but not included.
 	 * @param ranges The ranges used for counting.
-	 * @param isRangeUpperInclusive <code>true</code> if the date of the upper bound of each range should be included in the counts, or <code>false</code> if it
+	 * @param isRangeLowerInclusive <code>true</code> if the date of the lower bound of each range should be included in the counts, or <code>false</code> if it
 	 *          should not be included.
 	 * @return A map of all calendar days and the corresponding total number of intersections for each with the ranges.
 	 * @throws IllegalArgumentException if the lower bound of one of the ranges is above its upper bound.
 	 */
-	public static SortedMap<LocalDate, Count> getDayCounts(final Set<Range<LocalDate>> ranges, final boolean isRangeUpperInclusive) {
+	public static SortedMap<LocalDate, Count> getDayCounts(final Set<Range<LocalDate>> ranges, final boolean isRangeLowerInclusive) {
 		final SortedMap<LocalDate, Count> dayCounts = new TreeMap<LocalDate, Count>();
 
 		for(final Range<LocalDate> range : ranges) { //fill the day counts from the ranges
@@ -50,18 +50,15 @@ public class CalendarCalculator {
 
 			checkArgument(rangeDate.compareTo(upperBoundDate) <= 0, "Calendar range %s cannot be greater than %s.", rangeDate, upperBoundDate);
 
-			//this trick effectively changes `<= 0` to `< 0` for exclusive upper ranges
-			final int rangeResultMax = isRangeUpperInclusive ? 0 : -1;
-
-			while(rangeDate.compareTo(upperBoundDate) <= rangeResultMax) { //sweep the range until we go past the upper end of the range
-				incrementCounterMapCount(dayCounts, rangeDate);
+			if(!isRangeLowerInclusive) { //if we are excluding the lower bound, ensure there is at least a 0 marker
+				dayCounts.computeIfAbsent(rangeDate, __ -> new Count(0));
 				rangeDate = rangeDate.plusDays(1); //go to the next day in the range
 			}
 
-			if(!isRangeUpperInclusive) { //if we are exluding the upper bound, ensure there is at least a 0 marker
-				dayCounts.computeIfAbsent(upperBoundDate, __ -> new Count(0));
+			while(rangeDate.compareTo(upperBoundDate) <= 0) { //sweep the range until we go past the upper end of the range
+				incrementCounterMapCount(dayCounts, rangeDate);
+				rangeDate = rangeDate.plusDays(1); //go to the next day in the range
 			}
-
 		}
 
 		return dayCounts;
