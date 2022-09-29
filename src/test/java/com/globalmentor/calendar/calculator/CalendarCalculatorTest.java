@@ -61,7 +61,7 @@ public class CalendarCalculatorTest {
 	/** @see CalendarCalculator#getDayCounts(Set, boolean) */
 	@SuppressWarnings("unchecked")
 	@Test
-	public void testGetDayCountsExclusive() {
+	public void testGetDayCountsRangeLowerExclusive() {
 		Map<LocalDate, Count> dayCounts;
 		//no ranges
 		dayCounts = CalendarCalculator.getDayCounts(Collections.<Range<LocalDate>>emptySet(), false);
@@ -74,15 +74,15 @@ public class CalendarCalculatorTest {
 		//two days
 		dayCounts = CalendarCalculator.getDayCounts(immutableSetOf(new Range<LocalDate>(LocalDate.of(2002, 3, 2), LocalDate.of(2002, 3, 3))), false);
 		assertThat(dayCounts.containsKey(LocalDate.of(2002, 3, 1)), is(false));
-		assertThat(dayCounts.get(LocalDate.of(2002, 3, 2)).getCount(), is(1L));
-		assertThat(dayCounts.get(LocalDate.of(2002, 3, 3)).getCount(), is(0L));
+		assertThat(dayCounts.get(LocalDate.of(2002, 3, 2)).getCount(), is(0L));
+		assertThat(dayCounts.get(LocalDate.of(2002, 3, 3)).getCount(), is(1L));
 		assertThat(dayCounts.containsKey(LocalDate.of(2002, 3, 4)), is(false));
 		//a whole year, one range
 		dayCounts = CalendarCalculator.getDayCounts(immutableSetOf(new Range<LocalDate>(LocalDate.of(2001, 3, 5), LocalDate.of(2002, 3, 4))), false);
-		assertThat(dayCounts.get(LocalDate.of(2001, 3, 5)).getCount(), is(1L));
+		assertThat(dayCounts.get(LocalDate.of(2001, 3, 5)).getCount(), is(0L));
 		assertThat(dayCounts.get(LocalDate.of(2001, 3, 12)).getCount(), is(1L));
 		assertThat(dayCounts.get(LocalDate.of(2002, 3, 3)).getCount(), is(1L));
-		assertThat(dayCounts.get(LocalDate.of(2002, 3, 4)).getCount(), is(0L));
+		assertThat(dayCounts.get(LocalDate.of(2002, 3, 4)).getCount(), is(1L));
 		assertThat(dayCounts.containsKey(LocalDate.of(2002, 3, 5)), is(false));
 	}
 
@@ -117,13 +117,14 @@ public class CalendarCalculatorTest {
 		assertThat(dayTotals.get(LocalDate.of(2001, 3, 12)), is(8L));
 		assertThat(dayTotals.get(LocalDate.of(2002, 3, 4)), is(365L));
 
-		//a whole year, one range, with a zero count
+		//a whole year, one lower-bound-exclusive range, with a zero count
 		dayCounts = CalendarCalculator.getDayCounts(immutableSetOf(new Range<LocalDate>(LocalDate.of(2001, 3, 5), LocalDate.of(2002, 3, 4))), false);
 		dayTotals = CalendarCalculator.getDayTotals(LocalDate.of(2002, 3, 4), 365, dayCounts);
 		assertThat(dayTotals.size(), is(365));
-		assertThat(dayTotals.get(LocalDate.of(2001, 3, 5)), is(1L));
-		assertThat(dayTotals.get(LocalDate.of(2001, 3, 12)), is(8L));
-		assertThat(dayTotals.get(LocalDate.of(2002, 3, 3)), is(364L));
+		assertThat(dayTotals.get(LocalDate.of(2001, 3, 5)), is(0L));
+		assertThat(dayTotals.get(LocalDate.of(2001, 3, 6)), is(1L));
+		assertThat(dayTotals.get(LocalDate.of(2001, 3, 12)), is(7L));
+		assertThat(dayTotals.get(LocalDate.of(2002, 3, 3)), is(363L));
 		assertThat(dayTotals.get(LocalDate.of(2002, 3, 4)), is(364L));
 
 		//a whole year with a reset date

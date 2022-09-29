@@ -127,8 +127,8 @@ public class PrintDayTotals extends BaseCliApplication {
 		}
 
 		//count the days
-		final boolean inclusive = rangeUpperBound == RangeBoundType.inclusive;
-		final Map<LocalDate, Count> dayCounts = getDayCounts(ranges, inclusive);
+		final boolean isRangeLowerInclusive = rangeLowerBound == RangeBoundType.inclusive;
+		final Map<LocalDate, Count> dayCounts = getDayCounts(ranges, isRangeLowerInclusive);
 
 		//calculate the totals
 		final Map<LocalDate, Long> dayTotals = getDayTotals(date, resetDate, windowSize, historyCount, dayCounts);
@@ -201,8 +201,8 @@ public class PrintDayTotals extends BaseCliApplication {
 		exclusive
 	}
 
-	@Option(names = "--range-upper-bound", description = "Whether the last date in each range should be included in the totals.%nValid values: ${COMPLETION-CANDIDATES}.%nDefaults to @|bold ${DEFAULT-VALUE}|@.", defaultValue = "inclusive", arity = "0..1")
-	private RangeBoundType rangeUpperBound;
+	@Option(names = "--range-lower-bound", description = "Whether the first date in each range should be included in the totals.%nValid values: ${COMPLETION-CANDIDATES}.%nDefaults to @|bold ${DEFAULT-VALUE}|@.", defaultValue = "inclusive", arity = "0..1")
+	private RangeBoundType rangeLowerBound;
 
 	/**
 	 * The current local date for default calculations. Can be overridden in tests to prevent reliance on the true local date. Defaults to
